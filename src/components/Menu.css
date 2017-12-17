@@ -1,0 +1,16 @@
+.Menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  text-align: center;
+  padding: 10px;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(0,0,0,.25);
+  margin-top: 20px;
+}
+
+.Menu button {
+  margin: 0 5px;
+}

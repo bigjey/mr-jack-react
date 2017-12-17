@@ -1,0 +1,21 @@
+.Detective {
+  width: 60px;
+  height: 60px;
+  z-index: 500;
+  border-radius: 68px;
+  position: absolute;
+  margin-top: 85px;
+  margin-left: 85px;
+  transform: translate(-50%, -50%);
+}
+
+.Detective.active {
+  box-shadow: 0 0 25px red;
+  z-index: 10001 !important;
+}
+
+.Detective--image {
+  width: 100%;
+  height: 100%;
+  background-size: 100% 100%;
+}
