@@ -10,3 +10,11 @@
   left: 50%;
   transform: translate(-50%, -50%);
 }
+
+.Game--Actions {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  margin-right: 200px;
+  transform: translateY(-50%);
+}

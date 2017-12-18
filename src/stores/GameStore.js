@@ -60,6 +60,23 @@ export const DIRECTIONS = {
   LEFT: 4
 }
 
+export const ACTIONS = {
+  Alibi: 'Alibi',
+  MoveHolmes: 'MoveHolmes',
+  MoveToby: 'MoveToby',
+  MoveWatson: 'MoveWatson',
+  Rotate: 'Rotate',
+  Swap: 'Swap',
+  MoveAny: 'MoveAny'
+}
+
+export const ACTION_PAIRS = [
+  [ACTIONS.Alibi, ACTIONS.MoveHolmes],
+  [ACTIONS.MoveToby, ACTIONS.MoveWatson],
+  [ACTIONS.Rotate, ACTIONS.Swap],
+  [ACTIONS.Rotate, ACTIONS.MoveAny],
+]
+
 export const randomDirection = () => {
   return DIRECTIONS[Object.keys(DIRECTIONS)[Math.floor(Math.random()*4)]];
 }
@@ -70,9 +87,24 @@ class GameStore {
 
   @observable phase = PHASE.PREPARING;
 
+  @observable currentAction = null;
+
   @observable animating = false;
 
   @observable hoverDetective = null;
+
+  @observable actions = [];
+
+  @observable actionFlow = {
+    [ACTIONS.Rotate]: {
+      tile: null,
+      originalValue: null
+    },
+    [ACTIONS.Swap]: {
+      tile: null,
+      target: null
+    }
+  }
 
   constructor() {
     this.newGame();
@@ -124,6 +156,7 @@ class GameStore {
     this.grid.replace(grid);
 
     this.resetDetectives();
+    this.randomizeActions();
 
     // console.log('new grid', toJS(grid));
     // console.log('detectives', toJS(this.detectives));
@@ -147,6 +180,22 @@ class GameStore {
       y: 3,
       showMenu: false
     }])
+  }
+
+  @action.bound
+  randomizeActions() {
+    let pairs = ACTION_PAIRS.slice().sort(() => 0.5 - Math.random());
+
+    this.actions.replace(Array(4).fill(null).map(a => ({
+      flipped: false,
+      actions: pairs.pop(),
+      used: false
+    })));
+  }
+
+  @action.bound
+  selectAction(action = null) {
+    this.currentAction = action;
   }
 
   @computed
@@ -207,6 +256,11 @@ class GameStore {
   @action.bound
   rotateTile(x, y) {
     this.grid[y][x].wall++;
+  }
+
+  @action.bound
+  flipTile(x, y) {
+    this.grid[y][x].suspect = false;
   }
 
   @action.bound
@@ -352,21 +406,21 @@ class GameStore {
     // console.log('notVisibleSuspects', notVisibleSuspects);
 
     if (result.jackInSight) {
-      notVisibleSuspects.forEach(t => {
+      setTimeout(() => notVisibleSuspects.forEach(t => {
         t.suspect = false;
-      })
+      }), 1000);
 
       if (visibleSuspects.length === 1) {
-        setTimeout(() => alert(`GOTCHA! ${visibleSuspects[0].character} is Jack!`), 2500);
+        setTimeout(() => alert(`GOTCHA! ${visibleSuspects[0].character} is Jack!`), 1000);
         
       }
     } else {
-      visibleSuspects.forEach(t => {
+      setTimeout(() => visibleSuspects.forEach(t => {
         t.suspect = false;
-      })
+      }), 1000);
 
       if (notVisibleSuspects.length === 1) {
-        setTimeout(() => alert(`GOTCHA! ${notVisibleSuspects[0].character} is Jack!`), 2500);
+        setTimeout(() => alert(`GOTCHA! ${notVisibleSuspects[0].character} is Jack!`), 1000);
       }
     }
 
@@ -399,7 +453,7 @@ class GameStore {
         })
       })
       this.animating = false;
-    }, 2500)
+    }, 1900)
   }
 }
 

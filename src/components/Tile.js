@@ -5,6 +5,7 @@ import classnames from 'classnames';
 import { observer, inject } from 'mobx-react';
 
 import Menu from './Menu';
+import { ACTIONS } from '../stores/GameStore';
 
 @inject('game')
 @observer
@@ -13,13 +14,17 @@ export default class Tile extends React.Component {
     const {
       suspect,
       character,
+      isJack,
       x,
       y,
       wall,
       showMenu,
       game: {
         rotateTile,
-        setTileMenu
+        flipTile,
+        setTileMenu,
+        currentAction,
+        actionFlow
       }
     } = this.props;
 
@@ -46,11 +51,20 @@ export default class Tile extends React.Component {
           style={{
             transform: `rotate(${(wall + 1) * 90}deg)`
           }}
-          onClick={(e) => {
+          onClick={currentAction === null ? null : (e) => {
             e.preventDefault();
             e.stopPropagation();
 
-            setTileMenu(x, y, !showMenu);
+            switch (currentAction) {
+              case ACTIONS.Rotate:
+                const flow = actionFlow[ACTIONS.Rotate];
+                
+                flow.tile = this;
+                console.log(actionFlow);
+                break;
+              default:
+                break;
+            }
           }}
         >
           <div className={flipperClasses}>
@@ -68,6 +82,16 @@ export default class Tile extends React.Component {
 
             rotateTile(x, y);
           }}>Rotate</button>
+
+          {suspect && !isJack && (
+            <button onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+
+              flipTile(x, y);
+            }}>flip</button>
+          )}
+
           <button onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();

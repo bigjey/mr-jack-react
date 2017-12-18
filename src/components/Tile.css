@@ -5,6 +5,7 @@
   position: absolute;
   left: 0;
   top: 0;
+  transition: .2s ease;
 }
 
 .Tile--container {
@@ -55,4 +56,11 @@
 
 .Tile--flipper.flipped {
   transform: rotateY(180deg);
+}
+
+
+.Game.Rotate .Tile:hover {
+  outline: 5px solid yellow;
+  transform: scale(1.05);
+  z-index: 100001 !important;
 }
