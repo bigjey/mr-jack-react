@@ -1,9 +1,5 @@
-import './Menu.css';
+import "./Menu.css";
 
-import React from 'react';
+import React from "react";
 
-export default ({children}) => (
-  <div className="Menu">
-    {children}
-  </div>
-)
+export default ({ children }) => <div className="Menu">{children}</div>;

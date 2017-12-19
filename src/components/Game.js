@@ -1,50 +1,83 @@
-import './Game.css';
+import "./Game.css";
 
-import React from 'react';
-import { observer, inject } from 'mobx-react';
-import classnames from 'classnames';
+import React from "react";
+import { observer, inject } from "mobx-react";
+import classnames from "classnames";
 
-// import Card from './Card';
-import Tile from './Tile';
-import Action from './Action';
-import Detective from './Detective';
+import Card from "./Card";
+import Tile from "./Tile";
+import Action from "./Action";
+import Detective from "./Detective";
+import { CHARACTERS } from '../stores/GameStore';
 
-@inject('game')
+@inject("game")
 @observer
 export default class Game extends React.Component {
-
   render() {
-    const { game: { grid, detectives, actions, newGame, inspect, currentAction } } = this.props;
+    const {
+      game: {
+        grid,
+        detectives,
+        suspects,
+        actionTokens,
+        newGame,
+        inspect,
+        currentAction,
+        phase
+      }
+    } = this.props;
 
-    const gameClasses = classnames('Game', currentAction || '');
+    const gameClasses = classnames("Game", currentAction || "");
 
     return (
       <div className={gameClasses}>
         <button onClick={newGame}>New Game</button>
-        <br/>
-        <br/>
         <button onClick={inspect}>CHECK</button>
-        <br/>
-        <div className="Game--grid">
-          {grid.map((row, y) => 
-            row.map((tile, x) =>
-              <Tile 
-                key={tile.character}
-                x={x}
-                y={y}
-                {...tile} />
-            )
+
+        <br />
+        <br />
+
+        <div className="debug">
+          {phase && (
+            <div className="debug-line">
+              phase
+              <code>{phase.toUpperCase()}</code>
+            </div>
           )}
 
-          {detectives.map((detective) => 
-            <Detective key={detective.name} detective={detective} />
+          {currentAction && (
+            <div className="debug-line">
+              action
+              <code>{currentAction.toUpperCase()}</code>
+            </div>
           )}
+        </div>
+
+        <div className="Game--grid">
+          {grid.map((row, y) =>
+            row.map((tile, x) => (
+              <Tile key={tile.character} x={x} y={y} {...tile} />
+            ))
+          )}
+
+          {detectives.map(detective => (
+            <Detective key={detective.name} detective={detective} />
+          ))}
 
           <div className="Game--Actions">
-            {actions.map((action, index) => 
-              <Action key={action.actions.join('/')} {...action} index={index} />
-            )}
+            {actionTokens.map((action, index) => (
+              <Action {...action} key={action.actions} index={index} />
+            ))}
           </div>
+        </div>
+
+        <div>
+          {suspects.map(s => (
+            <Card key={s} character={s} />
+          ))}
+        </div>
+
+        <div className="Game--overlay">
         </div>
       </div>
     );

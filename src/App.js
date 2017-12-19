@@ -1,8 +1,8 @@
-import React, { Component } from 'react';
-import { Provider } from 'mobx-react';
+import React, { Component } from "react";
+import { Provider } from "mobx-react";
 
-import GameStore from './stores/GameStore';
-import Game from './components/Game';
+import GameStore from "./stores/GameStore";
+import Game from "./components/Game";
 
 const gameStore = new GameStore();
 

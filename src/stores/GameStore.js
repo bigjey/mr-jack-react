@@ -1,127 +1,135 @@
-import { observable, computed, action, toJS } from 'mobx';
-import { TweenLite } from 'gsap';
+import { observable, computed, action, toJS } from "mobx";
+import { TweenLite, TweenMax } from "gsap";
 
 export const PHASE = {
-  PREPARING: 1
-}
+  PREPARING: "PREPARING"
+};
 
 export const CHARACTERS = {
   Brown: {
-    color: 'Brown',
-    name: 'Joseph Lane',
+    color: "Brown",
+    name: "Joseph Lane",
     time: 1
   },
   Purple: {
-    color: 'Purple',
-    name: 'William Gull',
+    color: "Purple",
+    name: "William Gull",
     time: 1
   },
   Black: {
-    color: 'Black',
-    name: 'Sgt Goodley',
+    color: "Black",
+    name: "Sgt Goodley",
     time: 0
   },
   Green: {
-    color: 'Green',
-    name: 'Miss Stealthv',
+    color: "Green",
+    name: "Miss Stealthv",
     time: 1
   },
   Orange: {
-    color: 'Orange',
-    name: 'Jeremy Bert',
+    color: "Orange",
+    name: "Jeremy Bert",
     time: 1
   },
   Pink: {
-    color: 'Pink',
-    name: 'Madame',
+    color: "Pink",
+    name: "Madame",
     time: 2
   },
   White: {
-    color: 'White',
-    name: 'John Pizer',
+    color: "White",
+    name: "John Pizer",
     time: 1
   },
   Yellow: {
-    color: 'Yellow',
-    name: 'John Smith',
+    color: "Yellow",
+    name: "John Smith",
     time: 1
   },
   Blue: {
-    color: 'Blue',
-    name: 'Insp. Lestrade',
+    color: "Blue",
+    name: "Insp. Lestrade",
     time: 0
-  },
-}
+  }
+};
 
 export const DIRECTIONS = {
   UP: 1,
   RIGHT: 2,
   DOWN: 3,
   LEFT: 4
-}
+};
 
 export const ACTIONS = {
-  Alibi: 'Alibi',
-  MoveHolmes: 'MoveHolmes',
-  MoveToby: 'MoveToby',
-  MoveWatson: 'MoveWatson',
-  Rotate: 'Rotate',
-  Swap: 'Swap',
-  MoveAny: 'MoveAny'
-}
+  Alibi: "Alibi",
+  MoveHolmes: "MoveHolmes",
+  MoveToby: "MoveToby",
+  MoveWatson: "MoveWatson",
+  Rotate: "Rotate",
+  Swap: "Swap",
+  MoveAny: "MoveAny"
+};
 
 export const ACTION_PAIRS = [
-  [ACTIONS.Alibi, ACTIONS.MoveHolmes],
-  [ACTIONS.MoveToby, ACTIONS.MoveWatson],
-  [ACTIONS.Rotate, ACTIONS.Swap],
-  [ACTIONS.Rotate, ACTIONS.MoveAny],
-]
+  `${ACTIONS.Alibi}|${ACTIONS.MoveHolmes}`,
+  `${ACTIONS.MoveToby}|${ACTIONS.MoveWatson}`,
+  `${ACTIONS.Rotate}|${ACTIONS.Swap}`,
+  `${ACTIONS.Rotate}|${ACTIONS.MoveAny}`
+];
 
 export const randomDirection = () => {
-  return DIRECTIONS[Object.keys(DIRECTIONS)[Math.floor(Math.random()*4)]];
-}
+  return DIRECTIONS[Object.keys(DIRECTIONS)[Math.floor(Math.random() * 4)]];
+};
 
 class GameStore {
   @observable grid = [];
   @observable detectives = [];
+  @observable suspects = [];
+  @observable actionTokens = [];
 
   @observable phase = PHASE.PREPARING;
-
-  @observable currentAction = null;
 
   @observable animating = false;
 
   @observable hoverDetective = null;
 
-  @observable actions = [];
+  @observable jack = null;
 
-  @observable actionFlow = {
-    [ACTIONS.Rotate]: {
-      tile: null,
-      originalValue: null
-    },
-    [ACTIONS.Swap]: {
-      tile: null,
-      target: null
-    }
-  }
+  @observable round = 0;
 
   constructor() {
     this.newGame();
   }
 
   @action.bound
-  setHoverDetective(newDetective) {
-    this.hoverDetective = newDetective;
+  newGame() {
+    this.setJack();
+
+    this.setupGrid();
+    this.resetDetectives();
+    this.resetSuspects();
+    this.randomizeActions();
+
+    this.round++;
+
+    // console.log('new grid', toJS(grid));
+    // console.log('detectives', toJS(this.detectives));
   }
 
   @action.bound
-  newGame() {
-    let grid = observable(Array(3));
-    let jackNumber = Math.floor(Math.random() * 9);
-    let suspectsLeft = Object.keys(CHARACTERS).sort((a,b) => 0.5 - Math.random());
+  setJack() {
+    this.jack = Object.keys(CHARACTERS)[Math.floor(Math.random() * 9)];
+    console.log("jack:", this.jack);
+  }
 
-    for (let y = 0; y < 3; y++){
+  @action.bound
+  setupGrid() {
+    let grid = observable(Array(3));
+    let suspectsLeft = Object.keys(CHARACTERS).sort(
+      (a, b) => 0.5 - Math.random()
+    );
+
+    for (let y = 0; y < 3; y++) {
       let row = observable(Array(3));
 
       for (let x = 0; x < 3; x++) {
@@ -137,65 +145,141 @@ class GameStore {
           wall = randomDirection();
         }
 
-        (y * 3 + x) === jackNumber && console.log('jack is', suspectsLeft[suspectsLeft.length - 1])
-
-        let cell = {
+        let tile = {
           character: suspectsLeft.pop(),
           wall,
           showMenu: false,
           suspect: true,
-          isJack: (y * 3 + x) === jackNumber,
-        }
+          selected: false
+        };
 
-        row[x] = cell;
+        row[x] = tile;
       }
 
       grid[y] = row;
     }
 
     this.grid.replace(grid);
-
-    this.resetDetectives();
-    this.randomizeActions();
-
-    // console.log('new grid', toJS(grid));
-    // console.log('detectives', toJS(this.detectives));
   }
 
   @action.bound
   resetDetectives() {
-    this.detectives.replace([{
-      name: 'Holmes',
-      x: -1,
-      y: 0,
-      showMenu: false
-    }, {
-      name: 'Watson',
-      x: 3,
-      y: 0,
-      showMenu: false
-    }, {
-      name: 'Toby',
-      x: 1,
-      y: 3,
-      showMenu: false
-    }])
+    this.detectives.replace([
+      {
+        name: "Holmes",
+        x: -1,
+        y: 0,
+        selected: false
+      },
+      {
+        name: "Watson",
+        x: 3,
+        y: 0,
+        selected: false
+      },
+      {
+        name: "Toby",
+        x: 1,
+        y: 3,
+        selected: false
+      }
+    ]);
+  }
+
+  @action.bound
+  resetSuspects() {
+    let suspectsLeft = Object.keys(CHARACTERS)
+      .filter(s => s !== this.jack)
+      .sort((a, b) => 0.5 - Math.random());
+    this.suspects.replace(suspectsLeft);
   }
 
   @action.bound
   randomizeActions() {
     let pairs = ACTION_PAIRS.slice().sort(() => 0.5 - Math.random());
 
-    this.actions.replace(Array(4).fill(null).map(a => ({
-      flipped: false,
-      actions: pairs.pop(),
-      used: false
-    })));
+    this.actionTokens.replace(
+      Array(4)
+        .fill(null)
+        .map(a => ({
+          flipped: Math.random() > 0.5,
+          actions: pairs.pop(),
+          used: false,
+          selected: false
+        }))
+    );
   }
 
   @action.bound
-  selectAction(action = null) {
-    this.currentAction = action;
+  setHoverDetective(newDetective) {
+    this.hoverDetective = newDetective;
+  }
+
+  @action.bound
+  selectTile(character) {
+    this.forEachTile(tile => {
+      tile.selected = tile.character === character;
+    });
+  }
+
+  @action.bound
+  selectDetective(detective) {
+    this.detectives.forEach(d => (d.selected = d.name === detective));
+  }
+
+  @computed
+  get selectedDetective() {
+    return this.detectives.find(d => d.selected);
+  }
+
+  @computed
+  get selectedTile() {
+    return this.tiles.find(t => t.selected);
+  }
+
+  @computed
+  get tiles() {
+    let tiles = [];
+    for (let y = 0; y < 3; y++) {
+      for (let x = 0; x < 3; x++) {
+        tiles.push(this.grid[y][x]);
+      }
+    }
+    return tiles;
+  }
+
+  @action.bound
+  selectAction(newActions = null) {
+    this.actionTokens.forEach(a => {
+      a.selected = a.actions === newActions;
+      if (a.selected) {
+        switch (this.currentAction) {
+          case ACTIONS.Alibi:
+            this.showAlibi();
+            break;
+          case ACTIONS.MoveToby:
+            this.selectDetective("Toby");
+            break;
+          case ACTIONS.MoveWatson:
+            this.selectDetective("Watson");
+            break;
+          case ACTIONS.MoveHolmes:
+            this.selectDetective("Holmes");
+            break;
+          default:
+            break;
+        }
+      }
+    });
+  }
+
+  @computed
+  get currentAction() {
+    const token = this.actionTokens.find(a => a.selected);
+    if (token) {
+      return token.actions.split("|")[token.flipped ? 1 : 0];
+    }
+    return null;
   }
 
   @computed
@@ -222,18 +306,6 @@ class GameStore {
   }
 
   @action.bound
-  setDetectiveMenu(name, show) {
-    let d = this.detectives.find(d => d.name === name)
-    d.showMenu = show;
-
-    this.detectives.forEach(d => {
-      if (d.name === name) return;
-
-      d.showMenu = false;
-    })
-  }
-
-  @action.bound
   setTileMenu(x, y, show) {
     this.grid[y][x].showMenu = show;
 
@@ -241,12 +313,12 @@ class GameStore {
       if (xx === x && yy === y) return;
 
       tile.showMenu = false;
-    })
+    });
   }
 
   @action.bound
   forEachTile(fn) {
-    for (let y = 0; y < 3; y++){
+    for (let y = 0; y < 3; y++) {
       for (let x = 0; x < 3; x++) {
         fn(this.grid[y][x], x, y);
       }
@@ -259,6 +331,23 @@ class GameStore {
   }
 
   @action.bound
+  swapTiles(ch1, ch2) {
+    let t1, t2;
+    this.forEachTile((...params) => {
+      let t = params[0];
+      if (t.character === ch1) t1 = params;
+      if (t.character === ch2) t2 = params;
+    })
+
+    let [tile1, x1, y1] = t1;
+    let [tile2, x2, y2] = t2;
+    this.grid[y1][x1] = {...tile2}
+    this.grid[y2][x2] = {...tile1}
+
+    this.endAction();
+  }
+
+  @action.bound
   flipTile(x, y) {
     this.grid[y][x].suspect = false;
   }
@@ -267,30 +356,33 @@ class GameStore {
   moveDetective(name, steps = 1) {
     let detective = this.detectives.find(d => d.name === name);
 
-    let {x, y} = this.move(detective, steps);
+    let { x, y } = this.move(detective, steps);
 
     detective.x = x;
     detective.y = y;
+
+    this.endAction();
   }
 
-  facing({x, y}) {
+  facing({ x, y }) {
     if (x === -1) return DIRECTIONS.UP;
     if (x === 3) return DIRECTIONS.DOWN;
     if (y === -1) return DIRECTIONS.RIGHT;
     if (y === 3) return DIRECTIONS.LEFT;
   }
 
-  lookingAt({x, y}) {
+  lookingAt({ x, y }) {
     if (x === -1) return DIRECTIONS.RIGHT;
     if (x === 3) return DIRECTIONS.LEFT;
     if (y === -1) return DIRECTIONS.DOWN;
     if (y === 3) return DIRECTIONS.UP;
   }
 
-  move({x, y}, steps = 1) {
-    let dx = x, dy = y;
+  move({ x, y }, steps = 1) {
+    let dx = x,
+      dy = y;
 
-    switch(this.facing({x, y})) {
+    switch (this.facing({ x, y })) {
       case DIRECTIONS.UP:
         dy--;
         if (dy === -1) dx++;
@@ -312,9 +404,9 @@ class GameStore {
     }
 
     if (steps - 1 > 0) {
-      return this.move({x: dx, y: dy}, steps - 1);
+      return this.move({ x: dx, y: dy }, steps - 1);
     } else {
-      return {x: dx, y: dy};
+      return { x: dx, y: dy };
     }
   }
 
@@ -324,10 +416,10 @@ class GameStore {
       inSight: [],
       notInSight: [],
       jackInSight: false
-    }
+    };
 
     this.detectives.forEach(detective => {
-      switch(this.lookingAt(detective)){
+      switch (this.lookingAt(detective)) {
         case DIRECTIONS.UP:
           for (let y = 2; y >= 0; y--) {
             const tile = this.grid[y][detective.x];
@@ -336,7 +428,7 @@ class GameStore {
             if (wall === DIRECTIONS.DOWN) break;
 
             result.inSight.push(tile);
-            if (tile.isJack) result.jackInSight = true;
+            if (tile.character === this.jack) result.jackInSight = true;
 
             if (wall === DIRECTIONS.UP) break;
           }
@@ -350,7 +442,7 @@ class GameStore {
             if (wall === DIRECTIONS.LEFT) break;
 
             result.inSight.push(tile);
-            if (tile.isJack) result.jackInSight = true;
+            if (tile.character === this.jack) result.jackInSight = true;
 
             if (wall === DIRECTIONS.RIGHT) break;
           }
@@ -364,7 +456,7 @@ class GameStore {
             if (wall === DIRECTIONS.UP) break;
 
             result.inSight.push(tile);
-            if (tile.isJack) result.jackInSight = true;
+            if (tile.character === this.jack) result.jackInSight = true;
 
             if (wall === DIRECTIONS.DOWN) break;
           }
@@ -378,7 +470,7 @@ class GameStore {
             if (wall === DIRECTIONS.RIGHT) break;
 
             result.inSight.push(tile);
-            if (tile.isJack) result.jackInSight = true;
+            if (tile.character === this.jack) result.jackInSight = true;
 
             if (wall === DIRECTIONS.LEFT) break;
           }
@@ -386,13 +478,13 @@ class GameStore {
         default:
           break;
       }
-    })
+    });
 
     this.forEachTile((tile, x, y) => {
       if (result.inSight.indexOf(tile) === -1) {
         result.notInSight.push(tile);
       }
-    })
+    });
 
     if (result.notInSight.length) {
       this.highlightVisibleTiles(result.notInSight.map(t => t.character));
@@ -401,59 +493,127 @@ class GameStore {
     let visibleSuspects = result.inSight.filter(t => t.suspect);
     let notVisibleSuspects = result.notInSight.filter(t => t.suspect);
 
-    // console.log(result, result.jackInSight);
-    // console.log('visibleSuspects', visibleSuspects);
-    // console.log('notVisibleSuspects', notVisibleSuspects);
-
     if (result.jackInSight) {
-      setTimeout(() => notVisibleSuspects.forEach(t => {
-        t.suspect = false;
-      }), 1000);
+      setTimeout(
+        () =>
+          notVisibleSuspects.forEach(t => {
+            t.suspect = false;
+          }),
+        1000
+      );
 
       if (visibleSuspects.length === 1) {
-        setTimeout(() => alert(`GOTCHA! ${visibleSuspects[0].character} is Jack!`), 1000);
-        
+        setTimeout(
+          () => alert(`GOTCHA! ${visibleSuspects[0].character} is Jack!`),
+          2000
+        );
       }
     } else {
-      setTimeout(() => visibleSuspects.forEach(t => {
-        t.suspect = false;
-      }), 1000);
+      setTimeout(
+        () =>
+          visibleSuspects.forEach(t => {
+            t.suspect = false;
+          }),
+        1000
+      );
 
       if (notVisibleSuspects.length === 1) {
-        setTimeout(() => alert(`GOTCHA! ${notVisibleSuspects[0].character} is Jack!`), 1000);
+        setTimeout(
+          () => alert(`GOTCHA! ${notVisibleSuspects[0].character} is Jack!`),
+          2000
+        );
       }
     }
 
     return result;
   }
 
-  // @computed
-  // get visibleCharacters() {
-
-  // }
-
-  // @computed
-  // get invisibleCharacters() {
-  //   let invisible = Object.keys(CHARACTERS).filter(ch => visible.indexOf(ch) === -1);
-  // }
-
   highlightVisibleTiles(characters) {
     this.animating = true;
 
     characters.forEach(character => {
-      TweenLite.to(`#tile-${character}`, .2, {
-        opacity: .6
-      })
-    })
+      TweenLite.to(`#tile-${character}`, 0.2, {
+        opacity: 0.6
+      });
+    });
 
     setTimeout(() => {
       characters.forEach(character => {
-        TweenLite.to(`#tile-${character}`, .1, {
+        TweenLite.to(`#tile-${character}`, 0.1, {
           opacity: 1
-        })
-      })
+        });
+      });
       this.animating = false;
-    }, 1900)
+    }, 1900);
+  }
+
+  @action.bound
+  showAlibi() {
+    let char = this.suspects[this.suspects.length - 1];
+
+    const card = `#card-${char}`;
+    const flipper = `${card} .Card--flipper`;
+
+    TweenMax.fromTo(
+      card,
+      0.5,
+      {
+        rotation: 0
+      },
+      {
+        bottom: "50%",
+        right: "50%",
+        rotation: 0,
+        scale: 2,
+        onComplete: () => {
+          TweenMax.to(flipper, 0.15, {
+            rotationY: "360deg",
+            onComplete: () => {
+              setTimeout(() => {
+                TweenMax.to(card, 0.15, {
+                  right: "120%",
+                  onComplete: () => {
+                    this.suspects = this.suspects.filter(s => s !== char);
+
+                    const tile = this.tiles.find(t => t.character === char);
+                    if (tile && tile.suspect) {
+                      tile.suspect = false;
+                    }
+
+                    this.endAction();
+                  }
+                });
+              }, 1000);
+            }
+          });
+        }
+      }
+    );
+
+  }
+
+  @action.bound
+  endAction() {
+    this.actionTokens.forEach(a => {
+      if (a.selected) {
+        a.selected = false;
+        a.used = true;
+      }
+    });
+    this.tiles.forEach(t => (t.selected = false));
+    this.detectives.forEach(d => (d.selected = false));
+
+    if (this.actionTokens.every(t => t.used)) {
+      this.round++;
+      if (this.round % 2 === 1) {
+        this.randomizeActions();
+      } else {
+        this.actionTokens.forEach(t => {
+          t.flipped = !t.flipped;
+          t.used = false;
+        });
+      }
+    }
   }
 }
 

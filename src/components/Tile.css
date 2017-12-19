@@ -5,7 +5,7 @@
   position: absolute;
   left: 0;
   top: 0;
-  transition: .2s ease;
+  transition: 0.2s ease;
 }
 
 .Tile--container {
@@ -44,23 +44,28 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('/assets/TileRoad.png');
+  background-image: url("/assets/TileRoad.png");
   z-index: 10;
   backface-visibility: hidden;
   transform: rotateY(180deg);
 }
 
 .Tile--back.crossroad {
-  background-image: url('/assets/TileCrossRoad.png');
+  background-image: url("/assets/TileCrossRoad.png");
 }
 
 .Tile--flipper.flipped {
   transform: rotateY(180deg);
 }
 
-
-.Game.Rotate .Tile:hover {
+.Game.Rotate .Tile:hover,
+.Game.Swap .Tile:hover,
+.Tile.active {
   outline: 5px solid yellow;
   transform: scale(1.05);
-  z-index: 100001 !important;
+  z-index: 1002 !important;
+}
+
+.Tile.active {
+  z-index: 10003 !important;
 }

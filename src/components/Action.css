@@ -6,7 +6,7 @@
 
   margin-top: 0;
   display: block;
-  transition: .2s ease;
+  transition: 0.2s ease;
 }
 
 .Action + .Action {
@@ -14,7 +14,12 @@
 }
 
 .Action.used {
-  opacity: .2;
+  opacity: 0.2;
+}
+
+.Action.active {
+  transform: translateX(5px);
+  box-shadow: 0 0 10px red;
 }
 
 .Action:hover {

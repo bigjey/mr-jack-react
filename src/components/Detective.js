@@ -1,57 +1,59 @@
-import './Detective.css';
+import "./Detective.css";
 
-import React from 'react';
-import { inject, observer } from 'mobx-react';
-import classnames from 'classnames';
+import React from "react";
+import { inject, observer } from "mobx-react";
+import classnames from "classnames";
 
-import Menu from './Menu';
+import Menu from "./Menu";
+import { ACTIONS } from "../stores/GameStore";
 
-@inject('game')
+@inject("game")
 @observer
 export default class Detective extends React.Component {
   overlap = () => {
-    const { game: {overlaps}, detective: {name} } = this.props;
+    const { game: { overlaps }, detective: { name } } = this.props;
     let overlapIndex = overlaps.indexOf(name);
-    
+
     if (overlapIndex !== -1) {
-      return 50 * (overlapIndex - ((overlaps.length - 1)/2));
+      return 50 * (overlapIndex - (overlaps.length - 1) / 2);
     }
 
     return 0;
-  }
+  };
 
   zIndex = () => {
-    const { game: {overlaps, hoverDetective}, detective: {name} } = this.props;
+    const {
+      game: { overlaps, hoverDetective },
+      detective: { name }
+    } = this.props;
 
     if (name === hoverDetective) return 1000;
 
     let overlapIndex = overlaps.indexOf(name);
 
     if (overlapIndex !== -1) {
-      return (3 - overlapIndex)
+      return 3 - overlapIndex;
     }
 
     return 1;
-  }
+  };
 
   render() {
     const {
-      detective: {
-        name,
-        x,
-        y,
-        showMenu
-      },
+      detective: { name, x, y, showMenu },
       game: {
         moveDetective,
         setHoverDetective,
-        setDetectiveMenu
+        setDetectiveMenu,
+        currentAction,
+        selectedDetective,
+        selectDetective
       }
     } = this.props;
 
-    const classes = classnames('Detective', {
+    const classes = classnames("Detective", {
       active: showMenu
-    })
+    });
 
     return (
       <div
@@ -61,35 +63,44 @@ export default class Detective extends React.Component {
           top: 5 + y * 170,
           zIndex: this.zIndex()
         }}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
+        onClick={
+          currentAction === ACTIONS.MoveAny && !selectedDetective
+            ? e => {
+                e.stopPropagation();
 
-          setDetectiveMenu(name, !showMenu);
-        }}
+                selectDetective(name);
+              }
+            : null
+        }
         onMouseEnter={() => setHoverDetective(name)}
       >
-        <div className="Detective--image" style={{
-          backgroundImage: `url(/assets/${name}.png)`,
-        }}></div>
-        {showMenu && <Menu>
-          <button onClick={(e) => {
-            e.preventDefault();
-
-            moveDetective(name, 1);
-            setDetectiveMenu(name, false);
-
-            e.stopPropagation();
-          }}>1 step</button>
-          <button onClick={(e) => {
-            e.preventDefault();
-
-            moveDetective(name, 2);
-            setDetectiveMenu(name, false);
-
-            e.stopPropagation();
-          }}>2 steps</button>
-        </Menu>}
+        <div
+          className="Detective--image"
+          style={{
+            backgroundImage: `url(/assets/${name}.png)`
+          }}
+        />
+        {selectedDetective &&
+          selectedDetective.name === name && (
+            <Menu>
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  moveDetective(name, 1);
+                }}
+              >
+                1 step
+              </button>
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  moveDetective(name, 2);
+                }}
+              >
+                2 steps
+              </button>
+            </Menu>
+          )}
       </div>
     );
   }
