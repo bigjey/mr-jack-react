@@ -1,5 +1,6 @@
 import { observable, computed, action, toJS } from "mobx";
 import { TweenLite, TweenMax } from "gsap";
+import io from 'socket.io-client';
 
 export const PHASE = {
   PREPARING: "PREPARING"
@@ -97,8 +98,60 @@ class GameStore {
 
   @observable round = 0;
 
+  @observable games = [];
+
+  @observable gameId = null;
+
+  @observable playerId = null;
+
   constructor() {
     this.newGame();
+    this.ensurePlayerId();
+    this.createSocket();
+  }
+
+  ensurePlayerId() {
+    let playerId = localStorage.getItem('playerId');
+    if (!playerId) {
+      playerId = Math.floor(Math.random() * 1000000);
+      localStorage.setItem('playerId', playerId);
+    }
+    this.playerId = playerId;
+  }
+
+  createSocket() {
+    this.socket = io.connect('http://localhost:1234');
+
+    this.socket.emit('playerId', this.playerId);
+
+    this.socket.on('gameList', (games) => {
+      this.games.replace(games);
+    })
+
+    this.socket.on('joinedGame', (gameId) => {
+      this.gameId = gameId;
+    })
+  }
+
+  @action.bound
+  createGame() {
+    this.socket.emit('createGame');
+  }
+
+  @action.bound
+  joinGame(gameId) {
+    this.socket.emit('joinGame', gameId);
+  }
+
+  @action.bound
+  leaveGame() {
+    this.socket.emit('leaveGame', this.gameId);
+    this.gameId = null;
+  }
+
+  @computed
+  get currentGame() {
+    return this.games.find(g => g.id === this.gameId);
   }
 
   @action.bound

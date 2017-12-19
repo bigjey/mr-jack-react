@@ -3,6 +3,7 @@ import { Provider } from "mobx-react";
 
 import GameStore from "./stores/GameStore";
 import Game from "./components/Game";
+import Games from "./components/Games";
 
 const gameStore = new GameStore();
 
@@ -13,7 +14,8 @@ class App extends Component {
     return (
       <Provider game={gameStore}>
         <div className="App">
-          <Game />
+          {/*<Game />*/}
+          <Games/>
         </div>
       </Provider>
     );
