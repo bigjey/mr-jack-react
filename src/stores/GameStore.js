@@ -82,6 +82,11 @@ export const randomDirection = () => {
   return DIRECTIONS[Object.keys(DIRECTIONS)[Math.floor(Math.random() * 4)]];
 };
 
+export const TURN = {
+  DETECTIVE: 1,
+  JACK: 2
+}
+
 class GameStore {
   @observable grid = [];
   @observable detectives = [];
@@ -89,6 +94,8 @@ class GameStore {
   @observable actionTokens = [];
 
   @observable phase = PHASE.PREPARING;
+
+  @observable turn = TURN.DETECTIVE;
 
   @observable animating = false;
 
@@ -104,10 +111,14 @@ class GameStore {
 
   @observable playerId = null;
 
+  @observable jackTime = 0;
+
+  @observable jackCards = [];
+
   constructor() {
-    this.newGame();
     this.ensurePlayerId();
-    this.createSocket();
+    this.newGame();
+    // this.createSocket();
   }
 
   ensurePlayerId() {
@@ -154,6 +165,28 @@ class GameStore {
     return this.games.find(g => g.id === this.gameId);
   }
 
+  @computed
+  get isJackTurn() {
+    return this.turn === TURN.JACK;
+  }
+
+  @computed
+  get isDetectiveTurn() {
+    return this.turn === TURN.DETECTIVE;
+  }
+
+  @computed
+  get jackTotalTime() {
+    return this.jackTime + this.jackCardsTime;
+  }
+
+  @computed
+  get jackCardsTime() {
+    return this.jackCards.reduce((total, char) => {
+      return total + CHARACTERS[char].time;
+    }, 0)
+  }
+
   @action.bound
   newGame() {
     this.setJack();
@@ -163,7 +196,7 @@ class GameStore {
     this.resetSuspects();
     this.randomizeActions();
 
-    this.round++;
+    this.round = 1;
 
     // console.log('new grid', toJS(grid));
     // console.log('detectives', toJS(this.detectives));
@@ -213,6 +246,7 @@ class GameStore {
     }
 
     this.grid.replace(grid);
+    console.log("grid", toJS(this.grid));
   }
 
   @action.bound
@@ -237,6 +271,7 @@ class GameStore {
         selected: false
       }
     ]);
+    console.log('detectives', toJS(this.detectives));
   }
 
   @action.bound
@@ -245,6 +280,7 @@ class GameStore {
       .filter(s => s !== this.jack)
       .sort((a, b) => 0.5 - Math.random());
     this.suspects.replace(suspectsLeft);
+    console.log('suspects', toJS(this.suspects));
   }
 
   @action.bound
@@ -432,8 +468,8 @@ class GameStore {
   }
 
   move({ x, y }, steps = 1) {
-    let dx = x,
-      dy = y;
+    let dx = x;
+    let dy = y;
 
     switch (this.facing({ x, y })) {
       case DIRECTIONS.UP:
@@ -465,10 +501,13 @@ class GameStore {
 
   @action.bound
   inspect() {
+    console.log('inspecting');
+
     let result = {
       inSight: [],
       notInSight: [],
-      jackInSight: false
+      jackInSight: false,
+      gameover: false
     };
 
     this.detectives.forEach(detective => {
@@ -533,6 +572,8 @@ class GameStore {
       }
     });
 
+    console.log('inspectation result', result);
+
     this.forEachTile((tile, x, y) => {
       if (result.inSight.indexOf(tile) === -1) {
         result.notInSight.push(tile);
@@ -547,32 +588,51 @@ class GameStore {
     let notVisibleSuspects = result.notInSight.filter(t => t.suspect);
 
     if (result.jackInSight) {
+      console.log('jack is in sight');
       setTimeout(
-        () =>
+        () => {
           notVisibleSuspects.forEach(t => {
             t.suspect = false;
-          }),
+          });
+        },
         1000
       );
 
-      if (visibleSuspects.length === 1) {
+      if (visibleSuspects.length === 1 && this.jackTotalTime < 6) {
+        result.gameover = true;
+
         setTimeout(
-          () => alert(`GOTCHA! ${visibleSuspects[0].character} is Jack!`),
+          () => {
+            alert(`GOTCHA! ${visibleSuspects[0].character} is Jack!`);
+            
+          },
           2000
         );
       }
     } else {
       setTimeout(
-        () =>
+        () => {
           visibleSuspects.forEach(t => {
             t.suspect = false;
-          }),
+          })
+
+          this.jackTime += 1;
+
+          if (this.jackTotalTime >= 6) {
+            alert('JACK WON, he was', this.jack);
+            result.gameover = true;
+          }
+        },
         1000
       );
 
-      if (notVisibleSuspects.length === 1) {
+      if (notVisibleSuspects.length === 1 && this.jackTotalTime < 6) {
+        result.gameover = true;
+
         setTimeout(
-          () => alert(`GOTCHA! ${notVisibleSuspects[0].character} is Jack!`),
+          () => {
+            alert(`GOTCHA! ${notVisibleSuspects[0].character} is Jack!`);
+          },
           2000
         );
       }
@@ -607,6 +667,21 @@ class GameStore {
     const card = `#card-${char}`;
     const flipper = `${card} .Card--flipper`;
 
+    const onComplete = () => {
+      this.suspects = this.suspects.filter(s => s !== char);
+
+      const tile = this.tiles.find(t => t.character === char);
+      if (tile && tile.suspect) {
+        tile.suspect = false;
+      }
+
+      if (this.isJackTurn) {
+        this.jackCards.push(char);
+      }
+
+      this.endAction();
+    }
+
     TweenMax.fromTo(
       card,
       0.5,
@@ -625,16 +700,7 @@ class GameStore {
               setTimeout(() => {
                 TweenMax.to(card, 0.15, {
                   right: "120%",
-                  onComplete: () => {
-                    this.suspects = this.suspects.filter(s => s !== char);
-
-                    const tile = this.tiles.find(t => t.character === char);
-                    if (tile && tile.suspect) {
-                      tile.suspect = false;
-                    }
-
-                    this.endAction();
-                  }
+                  onComplete
                 });
               }, 1000);
             }
@@ -647,25 +713,45 @@ class GameStore {
 
   @action.bound
   endAction() {
+    console.log('action ended', this.round, this.round % 8);
+    let gameover = false;
+
+    if ([4,0].indexOf(this.round % 8) !== -1) {
+      gameover = this.inspect().gameover;
+    }
+
+    if (gameover) return;
+
+    this.round++;
+
     this.actionTokens.forEach(a => {
       if (a.selected) {
         a.selected = false;
         a.used = true;
       }
     });
+
+    if ([1,4,6,7].indexOf(this.round % 8) !== -1) {
+      this.turn = TURN.DETECTIVE;
+    } else {
+      this.turn = TURN.JACK;
+    }
+
+    if (this.round % 8 === 1) {
+      this.randomizeActions();
+    } else if (this.round % 8 === 5) {
+      this.actionTokens.forEach(t => {
+        t.flipped = !t.flipped;
+        t.used = false;
+      });
+    }
+
     this.tiles.forEach(t => (t.selected = false));
+
     this.detectives.forEach(d => (d.selected = false));
 
-    if (this.actionTokens.every(t => t.used)) {
-      this.round++;
-      if (this.round % 2 === 1) {
-        this.randomizeActions();
-      } else {
-        this.actionTokens.forEach(t => {
-          t.flipped = !t.flipped;
-          t.used = false;
-        });
-      }
+    if (this.jackTotalTime === 6) {
+      alert('JACK WON, he was', this.jack);
     }
   }
 }

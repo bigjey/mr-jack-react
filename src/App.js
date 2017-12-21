@@ -14,8 +14,8 @@ class App extends Component {
     return (
       <Provider game={gameStore}>
         <div className="App">
-          {/*<Game />*/}
-          <Games/>
+          <Game />
+          {/*<Games/>*/}
         </div>
       </Provider>
     );

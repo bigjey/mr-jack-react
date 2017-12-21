@@ -8,7 +8,7 @@ import Card from "./Card";
 import Tile from "./Tile";
 import Action from "./Action";
 import Detective from "./Detective";
-import { CHARACTERS } from '../stores/GameStore';
+import { CHARACTERS, TURN } from '../stores/GameStore';
 
 @inject("game")
 @observer
@@ -23,7 +23,9 @@ export default class Game extends React.Component {
         newGame,
         inspect,
         currentAction,
-        phase
+        phase,
+        turn,
+        jackTotalTime
       }
     } = this.props;
 
@@ -51,6 +53,16 @@ export default class Game extends React.Component {
               <code>{currentAction.toUpperCase()}</code>
             </div>
           )}
+
+          <div className="debug-line">
+            turn
+            <code>{turn === TURN.DETECTIVE ? 'DETECTIVE' : 'JACK'}</code>
+          </div>
+
+          <div className="debug-line">
+            jack total time:
+            <code>{jackTotalTime}</code>
+          </div>
         </div>
 
         <div className="Game--grid">
