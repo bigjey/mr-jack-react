@@ -26,9 +26,10 @@ export default class Tile extends React.Component {
         flipTile,
         setTileMenu,
         currentAction,
-        actionFlow,
         selectTile,
-        selectedTile
+        selectedTile,
+        rotatedTile,
+        grid
       }
     } = this.props;
 
@@ -37,7 +38,8 @@ export default class Tile extends React.Component {
       (selectedTile && selectedTile.character === character);
 
     const tileClasses = classnames("Tile", {
-      active: selectedTile && selectedTile.character === character
+      active: selectedTile && selectedTile.character === character,
+      rotated: rotatedTile && rotatedTile.character === character
     });
 
     const flipperClasses = classnames("Tile--flipper", {
@@ -53,8 +55,8 @@ export default class Tile extends React.Component {
         id={`tile-${character}`}
         className={tileClasses}
         style={{
-          left: 5 + x * 175,
-          top: 5 + y * 175,
+          left: 5 + x * 155,
+          top: 5 + y * 155,
           zIndex: showRotateMenu ? 1003 : showMenu ? 1001 : 1000
         }}
         onClick={
@@ -70,7 +72,11 @@ export default class Tile extends React.Component {
                     break;
                   case ACTIONS.Swap:
                     if (selectedTile) {
-                      swapTiles(selectedTile.character, character);
+                      if (selectedTile.character === character) {
+                        selectTile(null);
+                      } else {
+                        swapTiles(selectedTile.character, character);
+                      }
                     } else {
                       selectTile(character);
                     }
@@ -151,6 +157,7 @@ export default class Tile extends React.Component {
             <button
               onClick={e => {
                 e.stopPropagation();
+                grid[y][x].rotated = true;
                 endAction();
               }}
             >

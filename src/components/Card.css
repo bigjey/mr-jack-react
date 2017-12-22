@@ -1,20 +1,22 @@
 .Card {
-  width: 120px;
-  height: 200px;
+  width: 100px;
+  height: 175px;
   z-index: 500;
-  border-radius: 15px;
+  border-radius: 20px;
 
   position: absolute;
   right: 15px;
-  bottom: 15px;
+  bottom: 50%;
   z-index: 10000000;
+
+  transform: translateY(50%);
 }
 
 .Card:nth-child(2) {
-  transform: rotate(-5deg);
+  transform: translateY(50%) rotate(-5deg);
 }
 .Card:nth-child(3) {
-  transform: rotate(2deg);
+  transform: translateY(50%) rotate(2deg);
 }
 .Card:nth-child(4) {
   margin-bottom: 5px;
@@ -24,17 +26,17 @@
 }
 .Card:nth-child(6) {
   margin-right: 6px;
-  transform: rotate(3deg);
+  transform: translateY(50%) rotate(3deg);
 }
 .Card:nth-child(7) {
   margin-bottom: -8px;
 }
 .Card:nth-child(8) {
-  transform: rotate(-3deg);
+  transform: translateY(50%) rotate(-3deg);
 }
 
 .Card:nth-child(9) {
-  transform: rotate(7deg);
+  transform: translateY(50%) rotate(7deg);
 }
 
 .Card--flipper {
@@ -46,6 +48,7 @@
   transition: 0.5s;
   transform-style: preserve-3d;
   position: relative;
+  
 }
 
 .Card--front {
@@ -56,8 +59,9 @@
   height: 100%;
   z-index: 20;
   backface-visibility: hidden;
-  border-radius: 15px;
+  border-radius: 20px;
   background-size: 100% 100%;
+  box-shadow: 0 0 5px rgba(0,0,0,0.8);
 }
 
 .Card--back {
@@ -70,7 +74,8 @@
   z-index: 10;
   backface-visibility: hidden;
   transform: rotateY(180deg);
-  border-radius: 15px;
+  border-radius: 20px;
   background-size: 100% 100%;
+  box-shadow: 0 0 5px rgba(0,0,0,0.8);
 
 }

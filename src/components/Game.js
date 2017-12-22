@@ -20,50 +20,28 @@ export default class Game extends React.Component {
         detectives,
         suspects,
         actionTokens,
-        newGame,
-        inspect,
         currentAction,
-        phase,
         turn,
-        jackTotalTime
+        hint
       }
     } = this.props;
 
-    const gameClasses = classnames("Game", currentAction || "");
+    const gameClasses = classnames("Game", currentAction || "", {
+      actionSelection: !currentAction
+    });
 
     return (
       <div className={gameClasses}>
-        <button onClick={newGame}>New Game</button>
-        <button onClick={inspect}>CHECK</button>
 
-        <br />
-        <br />
+        {turn === TURN.JACK ? (
+          <div className="turn jack">Jack's turn</div>
+        ) : (
+          <div className="turn detective">Detectives' turn</div>
+        )}
 
-        <div className="debug">
-          {phase && (
-            <div className="debug-line">
-              phase
-              <code>{phase.toUpperCase()}</code>
-            </div>
-          )}
-
-          {currentAction && (
-            <div className="debug-line">
-              action
-              <code>{currentAction.toUpperCase()}</code>
-            </div>
-          )}
-
-          <div className="debug-line">
-            turn
-            <code>{turn === TURN.DETECTIVE ? 'DETECTIVE' : 'JACK'}</code>
-          </div>
-
-          <div className="debug-line">
-            jack total time:
-            <code>{jackTotalTime}</code>
-          </div>
-        </div>
+        {hint && (
+          <div className="hint" dangerouslySetInnerHTML={{__html: hint}} />
+        )}
 
         <div className="Game--grid">
           {grid.map((row, y) =>
@@ -75,12 +53,12 @@ export default class Game extends React.Component {
           {detectives.map(detective => (
             <Detective key={detective.name} detective={detective} />
           ))}
+        </div>
 
-          <div className="Game--Actions">
-            {actionTokens.map((action, index) => (
-              <Action {...action} key={action.actions} index={index} />
-            ))}
-          </div>
+        <div className="Game--Actions">
+          {actionTokens.map((action, index) => (
+            <Action {...action} key={action.actions} index={index} />
+          ))}
         </div>
 
         <div>
@@ -89,8 +67,6 @@ export default class Game extends React.Component {
           ))}
         </div>
 
-        <div className="Game--overlay">
-        </div>
       </div>
     );
   }

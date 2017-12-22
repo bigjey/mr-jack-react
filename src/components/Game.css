@@ -3,17 +3,20 @@
 
 .Game--grid {
   position: relative;
-  width: 530px;
-  height: 530px;
-  background: #eee;
+  width: 470px;
+  height: 470px;
   position: absolute;
-  bottom: 170px;
-  right: 170px;
+  top: 50%;
+  left: 50%;
+  margin-left: -235px;
+  margin-top: -235px;
+  background: #555;
+  box-shadow: 0 0 25px rgba(0,0,0,0.6);
 }
 
 .Game--Actions {
   position: absolute;
-  right: 100%;
+  left: 20px;
   top: 50%;
   margin-right: 130px;
   transform: translateY(-50%);
@@ -46,4 +49,30 @@
 
 .debug-line {
   margin-bottom: 10px;
+}
+
+.turn {
+  position: absolute;
+  font-size: 30px;
+  color: #fff;
+  font-weight: 300;
+  text-shadow: 1px 1px  0px #000;
+}
+.turn.jack {
+  right: 20px;
+  top: 20px;
+}
+.turn.detective {
+  right: 20px;
+  bottom: 20px;
+}
+
+.hint {
+  font-size: 14px;
+  text-align: center;
+  position: absolute;
+  top: 10px;
+  width: 400px;
+  left: 50%;
+  margin-left: -200px;
 }

@@ -5,5 +5,38 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: sans-serif;
+  font-family: 'Libre Baskerville', serif;
+  background: radial-gradient(ellipse at center, #777 0%,#000000 100%);
+  color: #fff;
+}
+
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.App {
+  width: 1024px;
+  height: 720px;
+  position: absolute;
+  bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+  border: 1px solid #444;
+  /*background-color: #e9e9e9;*/
+  box-shadow: 0 0 150px rgba(0,0,0, .35);
+
+  /*background-image: url(https://i.pinimg.com/originals/bf/2f/9b/bf2f9b32ef19a990c957e524a5cfa472.jpg);
+  background-image: url(https://s3-us-west-2.amazonaws.com/i.cdpn.io/90856.qsGkA.9dec1970-0ef9-4b4d-a096-6e316f5d077d.png);
+  background: #45484d;
+  background: radial-gradient(ellipse at center, #45484d 0%,#000000 100%);*/
+
+  background-position: center center;
+  background-size: cover;
+  overflow: hidden;
+  background-repeat: no-repeat;
 }

@@ -4,14 +4,15 @@
   z-index: 500;
   border-radius: 68px;
   position: absolute;
-  margin-top: 85px;
-  margin-left: 85px;
+  margin-top: 80px;
+  margin-left: 80px;
   transform: translate(-50%, -50%);
+  box-shadow: 0 0 5px rgba(0,0,0,0.8);
 }
 
-.Detective.active {
-  box-shadow: 0 0 25px red;
-  z-index: 10001 !important;
+.Detective.selected {
+  box-shadow: 0 0 10px gold;
+  z-index: 1000001 !important;
 }
 
 .Detective--image {

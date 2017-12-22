@@ -197,9 +197,6 @@ class GameStore {
     this.randomizeActions();
 
     this.round = 1;
-
-    // console.log('new grid', toJS(grid));
-    // console.log('detectives', toJS(this.detectives));
   }
 
   @action.bound
@@ -236,7 +233,8 @@ class GameStore {
           wall,
           showMenu: false,
           suspect: true,
-          selected: false
+          selected: false,
+          rotated: false
         };
 
         row[x] = tile;
@@ -327,6 +325,11 @@ class GameStore {
   }
 
   @computed
+  get rotatedTile() {
+    return this.tiles.find(t => t.rotated);
+  }
+
+  @computed
   get tiles() {
     let tiles = [];
     for (let y = 0; y < 3; y++) {
@@ -369,6 +372,27 @@ class GameStore {
       return token.actions.split("|")[token.flipped ? 1 : 0];
     }
     return null;
+  }
+
+  @computed
+  get hint() {
+    switch (this.currentAction) {
+      case "MoveAny":
+        return "Select detective";
+
+      case "Rotate":
+        return "Select tile to rotate";
+
+      case "Swap":
+        if (this.selectedTile) {
+          return "Click on selected tile to deselect. <br/>Click on another tile to swap them"
+        } else {
+          return "Select tile";
+        }
+
+      default:
+        return "";
+    }
   }
 
   @computed
@@ -501,8 +525,6 @@ class GameStore {
 
   @action.bound
   inspect() {
-    console.log('inspecting');
-
     let result = {
       inSight: [],
       notInSight: [],
@@ -572,8 +594,6 @@ class GameStore {
       }
     });
 
-    console.log('inspectation result', result);
-
     this.forEachTile((tile, x, y) => {
       if (result.inSight.indexOf(tile) === -1) {
         result.notInSight.push(tile);
@@ -588,7 +608,6 @@ class GameStore {
     let notVisibleSuspects = result.notInSight.filter(t => t.suspect);
 
     if (result.jackInSight) {
-      console.log('jack is in sight');
       setTimeout(
         () => {
           notVisibleSuspects.forEach(t => {
@@ -682,15 +701,14 @@ class GameStore {
       this.endAction();
     }
 
-    TweenMax.fromTo(
+    TweenMax.to(
       card,
       0.5,
       {
-        rotation: 0
-      },
-      {
         bottom: "50%",
         right: "50%",
+        x: "50%",
+        y: "50%",
         rotation: 0,
         scale: 2,
         onComplete: () => {
@@ -713,12 +731,17 @@ class GameStore {
 
   @action.bound
   endAction() {
-    console.log('action ended', this.round, this.round % 8);
     let gameover = false;
 
     if ([4,0].indexOf(this.round % 8) !== -1) {
       gameover = this.inspect().gameover;
+
+      this.tiles.forEach(t => (t.rotated = false));
     }
+
+    this.tiles.forEach(t => (t.selected = false));
+
+    this.detectives.forEach(d => (d.selected = false));
 
     if (gameover) return;
 
@@ -731,12 +754,6 @@ class GameStore {
       }
     });
 
-    if ([1,4,6,7].indexOf(this.round % 8) !== -1) {
-      this.turn = TURN.DETECTIVE;
-    } else {
-      this.turn = TURN.JACK;
-    }
-
     if (this.round % 8 === 1) {
       this.randomizeActions();
     } else if (this.round % 8 === 5) {
@@ -746,9 +763,11 @@ class GameStore {
       });
     }
 
-    this.tiles.forEach(t => (t.selected = false));
-
-    this.detectives.forEach(d => (d.selected = false));
+    if ([1,4,6,7].indexOf(this.round % 8) !== -1) {
+      this.turn = TURN.DETECTIVE;
+    } else {
+      this.turn = TURN.JACK;
+    }
 
     if (this.jackTotalTime === 6) {
       alert('JACK WON, he was', this.jack);

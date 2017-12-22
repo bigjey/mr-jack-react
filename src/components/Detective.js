@@ -10,41 +10,63 @@ import { ACTIONS } from "../stores/GameStore";
 @inject("game")
 @observer
 export default class Detective extends React.Component {
-  overlap = () => {
-    const { game: { overlaps }, detective: { name } } = this.props;
+  offset = () => {
+    const { game: { overlaps }, detective: { name, x, y } } = this.props;
     let overlapIndex = overlaps.indexOf(name);
 
+    let offset = 0;
+    let xx = 0;
+    let yy = 0;
+
     if (overlapIndex !== -1) {
-      return 50 * (overlapIndex - (overlaps.length - 1) / 2);
+      offset = 40 * (overlapIndex - (overlaps.length - 1) / 2);
+
+      if (x === -1 || x === 3) {
+        yy = offset;
+
+      } else if (y === -1 || y === 3) {
+        xx = offset;
+      }
     }
 
-    return 0;
+    if (x === -1) {
+      xx = 20
+    } else if (x === 3) {
+      xx = -20
+    } else if (y === -1) {
+      yy = 20
+    } else if (y === 3) {
+      yy = -20
+    }
+
+    return {x: xx, y: yy};
   };
 
   zIndex = () => {
     const {
       game: { overlaps, hoverDetective },
-      detective: { name }
+      detective: { name, selected }
     } = this.props;
 
-    if (name === hoverDetective) return 1000;
+    if (selected) return 1020;
+
+    if (name === hoverDetective) return 1010;
 
     let overlapIndex = overlaps.indexOf(name);
 
     if (overlapIndex !== -1) {
-      return 3 - overlapIndex;
+      return 1003 - overlapIndex;
     }
 
-    return 1;
+    return 1001;
   };
 
   render() {
     const {
-      detective: { name, x, y, showMenu },
+      detective: { name, x, y, showMenu, selected },
       game: {
         moveDetective,
         setHoverDetective,
-        setDetectiveMenu,
         currentAction,
         selectedDetective,
         selectDetective
@@ -52,15 +74,17 @@ export default class Detective extends React.Component {
     } = this.props;
 
     const classes = classnames("Detective", {
-      active: showMenu
+      selected
     });
+
+    const offset = this.offset();
 
     return (
       <div
         className={classes}
         style={{
-          left: 5 + x * 170 + this.overlap(),
-          top: 5 + y * 170,
+          left: 5 + x * 150 + offset.x,
+          top: 5 + y * 150 + offset.y,
           zIndex: this.zIndex()
         }}
         onClick={
@@ -89,7 +113,7 @@ export default class Detective extends React.Component {
                   moveDetective(name, 1);
                 }}
               >
-                1 step
+                Move 1
               </button>
               <button
                 onClick={e => {
@@ -97,7 +121,7 @@ export default class Detective extends React.Component {
                   moveDetective(name, 2);
                 }}
               >
-                2 steps
+                Move 2
               </button>
             </Menu>
           )}

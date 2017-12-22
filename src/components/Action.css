@@ -7,6 +7,7 @@
   margin-top: 0;
   display: block;
   transition: 0.2s ease;
+  box-shadow: 0 0 5px rgba(0,0,0,0.8);
 }
 
 .Action + .Action {
@@ -18,11 +19,11 @@
 }
 
 .Action.active {
-  transform: translateX(5px);
-  box-shadow: 0 0 10px red;
+  transform: scale(1.1);
+  box-shadow: 0 0 10px gold;
 }
 
-.Action:hover {
+.actionSelection .Action:hover {
   transform: translateX(5px);
 }
 
