@@ -1,103 +1,31 @@
-import { observable, computed, action, toJS } from "mobx";
+import { observable, computed, action } from "mobx";
 import { TweenLite, TweenMax } from "gsap";
 import io from 'socket.io-client';
 
-export const PHASE = {
-  PREPARING: "PREPARING"
-};
-
-export const CHARACTERS = {
-  Brown: {
-    color: "Brown",
-    name: "Joseph Lane",
-    time: 1
-  },
-  Purple: {
-    color: "Purple",
-    name: "William Gull",
-    time: 1
-  },
-  Black: {
-    color: "Black",
-    name: "Sgt Goodley",
-    time: 0
-  },
-  Green: {
-    color: "Green",
-    name: "Miss Stealthv",
-    time: 1
-  },
-  Orange: {
-    color: "Orange",
-    name: "Jeremy Bert",
-    time: 1
-  },
-  Pink: {
-    color: "Pink",
-    name: "Madame",
-    time: 2
-  },
-  White: {
-    color: "White",
-    name: "John Pizer",
-    time: 1
-  },
-  Yellow: {
-    color: "Yellow",
-    name: "John Smith",
-    time: 1
-  },
-  Blue: {
-    color: "Blue",
-    name: "Insp. Lestrade",
-    time: 0
-  }
-};
-
-export const DIRECTIONS = {
-  UP: 1,
-  RIGHT: 2,
-  DOWN: 3,
-  LEFT: 4
-};
-
-export const ACTIONS = {
-  Alibi: "Alibi",
-  MoveHolmes: "MoveHolmes",
-  MoveToby: "MoveToby",
-  MoveWatson: "MoveWatson",
-  Rotate: "Rotate",
-  Swap: "Swap",
-  MoveAny: "MoveAny"
-};
-
-export const ACTION_PAIRS = [
-  `${ACTIONS.Alibi}|${ACTIONS.MoveHolmes}`,
-  `${ACTIONS.MoveToby}|${ACTIONS.MoveWatson}`,
-  `${ACTIONS.Rotate}|${ACTIONS.Swap}`,
-  `${ACTIONS.Rotate}|${ACTIONS.MoveAny}`
-];
-
-export const randomDirection = () => {
-  return DIRECTIONS[Object.keys(DIRECTIONS)[Math.floor(Math.random() * 4)]];
-};
-
-export const TURN = {
-  DETECTIVE: 1,
-  JACK: 2
-}
+import {
+  PHASE,
+  CHARACTERS,
+  DIRECTIONS,
+  ACTIONS,
+  TURN
+} from '../constants';
 
 class GameStore {
   @observable grid = [];
   @observable detectives = [];
   @observable suspects = [];
   @observable actionTokens = [];
+  @observable ready = [];
+  @observable players = [];
+  @observable waiting = [];
+  @observable selection = {};
 
-  @observable phase = PHASE.PREPARING;
+  @observable phase = PHASE.LOBBY;
 
   @observable turn = TURN.DETECTIVE;
 
   @observable animating = false;
+  @observable readyCountdown = false;
 
   @observable hoverDetective = null;
 
@@ -117,8 +45,7 @@ class GameStore {
 
   constructor() {
     this.ensurePlayerId();
-    this.newGame();
-    // this.createSocket();
+    this.createSocket();
   }
 
   ensurePlayerId() {
@@ -142,6 +69,37 @@ class GameStore {
     this.socket.on('joinedGame', (gameId) => {
       this.gameId = gameId;
     })
+
+    this.socket.on('startReadyCountdown', () => {
+      this.readyCountdown = true;
+    })
+
+    this.socket.on('cancelReadyCountdown', () => {
+      this.readyCountdown = false;
+    })
+
+    this.socket.on('gameData', ({
+      phase,
+      grid,
+      suspects,
+      detectives,
+      actionTokens,
+      selection,
+      ready,
+      waiting,
+      players
+    }) => {
+
+      this.phase = phase;
+      this.grid.replace(grid);
+      this.suspects.replace(suspects);
+      this.detectives.replace(detectives);
+      this.actionTokens.replace(actionTokens);
+      this.selection = {...selection};
+      this.ready.replace(ready);
+      this.waiting.replace(waiting);
+      this.players.replace(players);
+    })
   }
 
   @action.bound
@@ -158,6 +116,16 @@ class GameStore {
   leaveGame() {
     this.socket.emit('leaveGame', this.gameId);
     this.gameId = null;
+  }
+
+  @action.bound
+  selectCharacter(character) {
+    this.socket.emit('selectCharacter', {character, gameId: this.gameId})
+  }
+
+  @action.bound
+  toggleReady() {
+    this.socket.emit('toggleReady', this.gameId);
   }
 
   @computed
@@ -185,116 +153,6 @@ class GameStore {
     return this.jackCards.reduce((total, char) => {
       return total + CHARACTERS[char].time;
     }, 0)
-  }
-
-  @action.bound
-  newGame() {
-    this.setJack();
-
-    this.setupGrid();
-    this.resetDetectives();
-    this.resetSuspects();
-    this.randomizeActions();
-
-    this.round = 1;
-  }
-
-  @action.bound
-  setJack() {
-    this.jack = Object.keys(CHARACTERS)[Math.floor(Math.random() * 9)];
-    console.log("jack:", this.jack);
-  }
-
-  @action.bound
-  setupGrid() {
-    let grid = observable(Array(3));
-    let suspectsLeft = Object.keys(CHARACTERS).sort(
-      (a, b) => 0.5 - Math.random()
-    );
-
-    for (let y = 0; y < 3; y++) {
-      let row = observable(Array(3));
-
-      for (let x = 0; x < 3; x++) {
-        let wall;
-
-        if (x === 0 && y === 0) {
-          wall = DIRECTIONS.LEFT;
-        } else if (x === 2 && y === 0) {
-          wall = DIRECTIONS.RIGHT;
-        } else if (x === 1 && y === 2) {
-          wall = DIRECTIONS.DOWN;
-        } else {
-          wall = randomDirection();
-        }
-
-        let tile = {
-          character: suspectsLeft.pop(),
-          wall,
-          showMenu: false,
-          suspect: true,
-          selected: false,
-          rotated: false
-        };
-
-        row[x] = tile;
-      }
-
-      grid[y] = row;
-    }
-
-    this.grid.replace(grid);
-    console.log("grid", toJS(this.grid));
-  }
-
-  @action.bound
-  resetDetectives() {
-    this.detectives.replace([
-      {
-        name: "Holmes",
-        x: -1,
-        y: 0,
-        selected: false
-      },
-      {
-        name: "Watson",
-        x: 3,
-        y: 0,
-        selected: false
-      },
-      {
-        name: "Toby",
-        x: 1,
-        y: 3,
-        selected: false
-      }
-    ]);
-    console.log('detectives', toJS(this.detectives));
-  }
-
-  @action.bound
-  resetSuspects() {
-    let suspectsLeft = Object.keys(CHARACTERS)
-      .filter(s => s !== this.jack)
-      .sort((a, b) => 0.5 - Math.random());
-    this.suspects.replace(suspectsLeft);
-    console.log('suspects', toJS(this.suspects));
-  }
-
-  @action.bound
-  randomizeActions() {
-    let pairs = ACTION_PAIRS.slice().sort(() => 0.5 - Math.random());
-
-    this.actionTokens.replace(
-      Array(4)
-        .fill(null)
-        .map(a => ({
-          flipped: Math.random() > 0.5,
-          actions: pairs.pop(),
-          used: false,
-          selected: false
-        }))
-    );
   }
 
   @action.bound

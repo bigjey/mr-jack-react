@@ -8,7 +8,7 @@ import Card from "./Card";
 import Tile from "./Tile";
 import Action from "./Action";
 import Detective from "./Detective";
-import { CHARACTERS, TURN } from '../stores/GameStore';
+import { TURN } from '../constants';
 
 @inject("game")
 @observer

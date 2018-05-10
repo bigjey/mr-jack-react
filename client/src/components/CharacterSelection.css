@@ -1,0 +1,42 @@
+.CharacterSelection {
+  text-align: center;
+}
+
+.CharacterSelection--title {
+  font-size: 40px;
+}
+
+.CharacterSelection--options {
+  position: absolute;
+  left: 0;
+  top: 35%;
+  right: 0;
+}
+
+.CharacterSelection--option {
+  display: inline-block;
+  width: 20%;
+  text-align: center;
+  margin: 0 50px;
+  font-size: 25px;
+  vertical-align: top;
+}
+
+.CharacterSelection--selection {
+  margin-top: 40px;
+}
+
+.CharacterSelection--name {
+  margin-bottom: 20px;
+}
+
+.CharacterSelection--ready {
+  position: absolute;
+  bottom: 50px;
+  left: 0;
+  right: 0;
+}
+
+.CharacterSelection--ready button {
+  font-size: 24px;
+}

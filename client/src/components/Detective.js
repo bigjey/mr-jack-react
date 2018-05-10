@@ -5,7 +5,7 @@ import { inject, observer } from "mobx-react";
 import classnames from "classnames";
 
 import Menu from "./Menu";
-import { ACTIONS } from "../stores/GameStore";
+import { ACTIONS } from "../constants";
 
 @inject("game")
 @observer
@@ -63,7 +63,7 @@ export default class Detective extends React.Component {
 
   render() {
     const {
-      detective: { name, x, y, showMenu, selected },
+      detective: { name, x, y, selected },
       game: {
         moveDetective,
         setHoverDetective,

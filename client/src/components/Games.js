@@ -5,7 +5,7 @@ import { inject, observer } from "mobx-react";
 @observer
 class Games extends Component {
   render() {
-    const { game: { games, createGame, joinGame, leaveGame, gameId, currentGame, playerId } } = this.props;
+    const { game: { games, createGame, joinGame, leaveGame, gameId, waiting, players, playerId } } = this.props;
 
     return (
       <div>
@@ -14,22 +14,20 @@ class Games extends Component {
           <div>
             in game: {gameId} <button onClick={leaveGame}>Leave</button>
             <br/>
-            {currentGame && (
-              <div>
-                <small>{currentGame.players.length}/2</small>
-                <br/>
-                {currentGame.waiting.length > 0 && <div>
-                  waiting 3 seconds for {currentGame.waiting} to reconnect...
-                </div>}
-              </div>
-            )}
+            <div>
+              <small>{players.length}/2</small>
+              <br/>
+              {waiting.length > 0 && <div>
+                waiting 3 seconds for {waiting} to reconnect...
+              </div>}
+            </div>
 
           </div>
         ) : (
           <div>
             <button onClick={createGame}>Create</button>
             {games.map(g => (
-              <div>{g.id}
+              <div key={g.id}>{g.id}
               {g.players.length < 2 && <button onClick={() => joinGame(g.id)}>Join</button>}
               </div>
             ))}

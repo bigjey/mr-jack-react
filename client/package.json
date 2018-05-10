@@ -98,5 +98,9 @@
   },
   "eslintConfig": {
     "extends": "react-app"
-  }
+  },
+  "main": "index.js",
+  "repository": "https://github.com/bigjey/mr-jack-react.git",
+  "author": "Denys Izhetskyi <mail.bigjey@gmail.com>",
+  "license": "MIT"
 }

@@ -5,7 +5,7 @@ import classnames from "classnames";
 import { observer, inject } from "mobx-react";
 
 import Menu from "./Menu";
-import { ACTIONS } from "../stores/GameStore";
+import { ACTIONS } from "../constants";
 
 @inject("game")
 @observer
