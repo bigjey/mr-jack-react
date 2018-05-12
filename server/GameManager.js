@@ -1,4 +1,4 @@
-import Game from './Game';
+import Game from "./Game";
 
 import {
   PHASE,
@@ -8,13 +8,13 @@ import {
   ACTION_PAIRS,
   randomDirection,
   TURN
-} from './constants';
+} from "./constants";
 
 class GameManager {
   constructor(io) {
     this.io = io;
     this.games = [];
-    this.gameById = {}
+    this.gameById = {};
   }
 
   createGame(socket) {
@@ -39,7 +39,7 @@ class GameManager {
     if (game) {
       game.players.push(socket);
 
-      socket.emit('joinedGame', gameId);
+      socket.emit("joinedGame", gameId);
       socket.join(gameId);
 
       if (game.players.length === 2) {
@@ -49,7 +49,6 @@ class GameManager {
       this.updateGameInfo(gameId);
       this.updateGameList();
     }
-
   }
 
   leaveGame(gameId, socket) {
@@ -80,7 +79,7 @@ class GameManager {
         clearTimeout(pending.timeout);
         game.pending = game.pending.filter(p => p.playerId !== socket.playerId);
 
-        socket.emit('joinedGame', game.id);
+        socket.emit("joinedGame", game.id);
         socket.join(game.id);
 
         this.updateGameInfo(game.id);
@@ -103,7 +102,7 @@ class GameManager {
       if (game.timeouts.ready) {
         game.ready = game.ready.filter(p => p !== socket.playerId);
         clearTimeout(game.timeouts.ready);
-        this.io.to(game.id).emit('cancelReadyCountdown');
+        this.io.to(game.id).emit("cancelReadyCountdown");
       }
 
       this.updateGameInfo(game.id);
@@ -126,9 +125,9 @@ class GameManager {
 
     if (game) {
       if (game.ready.indexOf(socket.playerId) !== -1) {
-        game.ready = game.ready.filter(pId => pId !== socket.playerId)
+        game.ready = game.ready.filter(pId => pId !== socket.playerId);
       } else {
-        game.ready.push(socket.playerId)
+        game.ready.push(socket.playerId);
       }
 
       if (game.ready.length === 2) {
@@ -136,12 +135,12 @@ class GameManager {
           game.setPhase(PHASE.PLAY);
           game.newGame();
           this.updateGameInfo(gameId);
-          this.io.to(gameId).emit('cancelReadyCountdown');
-        }, 5000);
-        this.io.to(gameId).emit('startReadyCountdown');
+          this.io.to(gameId).emit("cancelReadyCountdown");
+        }, 2000);
+        this.io.to(gameId).emit("startReadyCountdown");
       } else {
         clearTimeout(game.timeouts.ready);
-        this.io.to(gameId).emit('cancelReadyCountdown');
+        this.io.to(gameId).emit("cancelReadyCountdown");
       }
 
       this.updateGameInfo(gameId);
@@ -154,7 +153,7 @@ class GameManager {
 
   updateGameList() {
     // console.log('updating game list');
-    this.io.emit('gameList', this.games.map(this.normalizeGame));
+    this.io.emit("gameList", this.games.map(this.normalizeGame));
   }
 
   updateGameInfo(gameId) {
@@ -166,6 +165,14 @@ class GameManager {
     }
   }
 
+  rotateTile(socket, gameId, x, y, rotations) {
+    const game = this.gameById[gameId];
+
+    if (game) {
+      game.rotateTile(x, y, rotations);
+    }
+  }
+
   normalizeGame(game) {
     return {
       id: game.id,
@@ -174,8 +181,8 @@ class GameManager {
       waiting: game.pending.map(p => p.playerId),
       selection: game.characterSelection,
       ready: game.ready
-    }
+    };
   }
 }
 
-module.exports = (io) => new GameManager(io);
+module.exports = io => new GameManager(io);

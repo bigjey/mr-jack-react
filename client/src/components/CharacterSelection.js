@@ -5,16 +5,20 @@ import { inject, observer } from "mobx-react";
 
 import { TURN } from "../constants";
 
-const options = [{
-  label: 'Jack',
-  value: TURN.JACK
-}, {
-  label: 'Any',
-  value: null
-}, {
-  label: 'Detective',
-  value: TURN.DETECTIVE
-}]
+const options = [
+  {
+    label: "Jack",
+    value: TURN.JACK
+  },
+  {
+    label: "Any",
+    value: null
+  },
+  {
+    label: "Detective",
+    value: TURN.DETECTIVE
+  }
+];
 
 @inject("game")
 @observer
@@ -42,7 +46,7 @@ export default class CharacterSelection extends React.Component {
         <div className="CharacterSelection--title">Prefered character?</div>
 
         <div className="CharacterSelection--options">
-          {options.map(({label, value}) => 
+          {options.map(({ label, value }) => (
             <div className="CharacterSelection--option" key={label}>
               <div className="CharacterSelection--name">{label}</div>
               <button
@@ -57,12 +61,12 @@ export default class CharacterSelection extends React.Component {
               {opponentSelection === value && (
                 <div className="CharacterSelection--selection">
                   Opponent
-                  <br/>
+                  <br />
                   <small>({opponentIsReady ? `Ready` : `Not Ready`})</small>
                 </div>
               )}
             </div>
-          )}
+          ))}
         </div>
 
         {mySelection !== undefined && (
@@ -73,7 +77,7 @@ export default class CharacterSelection extends React.Component {
             <br />
             {readyCountdown && (
               <Countdown
-                seconds={5}
+                seconds={2}
                 render={({ seconds }) => (
                   <span>
                     {seconds > 0
@@ -111,9 +115,7 @@ class Countdown extends React.Component {
     }, 1000);
   }
 
-  updateCoundown() {
-
-  }
+  updateCoundown() {}
 
   componentWillUnmount() {
     clearInterval(this.interval);

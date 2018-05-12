@@ -10,6 +10,10 @@ import { ACTIONS } from "../constants";
 @inject("game")
 @observer
 export default class Tile extends React.Component {
+  state = {
+    rotations: 0
+  };
+
   render() {
     const {
       suspect,
@@ -32,6 +36,8 @@ export default class Tile extends React.Component {
         grid
       }
     } = this.props;
+
+    const { rotations } = this.state;
 
     const showRotateMenu =
       currentAction === ACTIONS.Rotate &&
@@ -90,7 +96,7 @@ export default class Tile extends React.Component {
         <div
           className="Tile--container"
           style={{
-            transform: `rotate(${(wall + 1) * 90}deg)`
+            transform: `rotate(${(wall + 1 + rotations) * 90}deg)`
           }}
         >
           <div className={flipperClasses}>
@@ -111,7 +117,8 @@ export default class Tile extends React.Component {
                 e.preventDefault();
                 e.stopPropagation();
 
-                rotateTile(x, y);
+                this.setState({ rotations: this.state.rotations++ });
+                // rotateTile(x, y);
               }}
             >
               Rotate
@@ -149,7 +156,9 @@ export default class Tile extends React.Component {
             <button
               onClick={e => {
                 e.stopPropagation();
-                rotateTile(x, y);
+                this.setState({ rotations: this.state.rotations + 1 });
+
+                // rotateTile(x, y);
               }}
             >
               Rotate
@@ -157,8 +166,10 @@ export default class Tile extends React.Component {
             <button
               onClick={e => {
                 e.stopPropagation();
-                grid[y][x].rotated = true;
-                endAction();
+                rotateTile(x, y, this.state.rotations % 4);
+                this.setState({
+                  rotations: 0
+                });
               }}
             >
               OK

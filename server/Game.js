@@ -6,10 +6,9 @@ import {
   ACTION_PAIRS,
   randomDirection,
   TURN
-} from './constants';
+} from "./constants";
 
 class Game {
-
   constructor(socket) {
     this.socket = socket;
     this.id = Math.floor(Math.random() * 1000000);
@@ -27,10 +26,24 @@ class Game {
 
     this.turn = TURN.DETECTIVE;
 
+    this.jack = null;
+
+    this.round = 0;
+
+    this.games = [];
+
+    this.gameId = null;
+
+    this.playerId = null;
+
+    this.jackTime = 0;
+
+    this.jackCards = [];
+
     this.timeouts = {
       ready: null,
-      reconnecting: {},
-    }
+      reconnecting: {}
+    };
   }
 
   setPhase(phase) {
@@ -59,8 +72,8 @@ class Game {
 
     // console.log('updating', data);
 
-    this.socket.emit('gameData', data);
-    this.socket.to(this.id).emit('gameData', data);
+    this.socket.emit("gameData", data);
+    this.socket.to(this.id).emit("gameData", data);
   }
 
   normalize() {
@@ -74,8 +87,8 @@ class Game {
       grid: this.grid,
       detectives: this.detectives,
       suspects: this.suspects,
-      actionTokens: this.actionTokens,
-    }
+      actionTokens: this.actionTokens
+    };
   }
 
   setJack() {
@@ -123,7 +136,7 @@ class Game {
   }
 
   resetDetectives() {
-    this.detectives =[
+    this.detectives = [
       {
         name: "Holmes",
         x: -1,
@@ -165,15 +178,233 @@ class Game {
       }));
   }
 
-  // normalize() {
-  //   return {
-  //     grid: this.grid,
-  //     detectives: this.detectives,
-  //     suspects: this.suspects,
-  //     actionTokens: this.actionTokens,
-  //   }
-  // }
+  get jackTotalTime() {
+    return this.jackTime + this.jackCardsTime;
+  }
 
+  get isJackTurn() {
+    return this.turn === TURN.JACK;
+  }
+
+  get isDetectiveTurn() {
+    return this.turn === TURN.DETECTIVE;
+  }
+
+  get jackCardsTime() {
+    return this.jackCards.reduce((total, char) => {
+      return total + CHARACTERS[char].time;
+    }, 0);
+  }
+
+  get tiles() {
+    let tiles = [];
+    for (let y = 0; y < 3; y++) {
+      for (let x = 0; x < 3; x++) {
+        tiles.push(this.grid[y][x]);
+      }
+    }
+    return tiles;
+  }
+
+  rotateTile(x, y, rotations) {
+    this.grid[y][x].wall += rotations;
+    this.endAction();
+
+    console.log("rotate", x, y, rotations);
+
+    this.updateGameInfo();
+  }
+
+  endAction() {
+    return;
+    let gameover = false;
+
+    if ([4, 0].indexOf(this.round % 8) !== -1) {
+      gameover = this.inspect().gameover;
+
+      this.tiles.forEach(t => (t.rotated = false));
+    }
+
+    this.tiles.forEach(t => (t.selected = false));
+
+    this.detectives.forEach(d => (d.selected = false));
+
+    if (gameover) return;
+
+    this.round++;
+
+    this.actionTokens.forEach(a => {
+      if (a.selected) {
+        a.selected = false;
+        a.used = true;
+      }
+    });
+
+    if (this.round % 8 === 1) {
+      this.randomizeActions();
+    } else if (this.round % 8 === 5) {
+      this.actionTokens.forEach(t => {
+        t.flipped = !t.flipped;
+        t.used = false;
+      });
+    }
+
+    if ([1, 4, 6, 7].indexOf(this.round % 8) !== -1) {
+      this.turn = TURN.DETECTIVE;
+    } else {
+      this.turn = TURN.JACK;
+    }
+
+    if (this.jackTotalTime === 6) {
+      console.log("JACK WON, he was", this.jack);
+    }
+  }
+
+  inspect() {
+    let result = {
+      inSight: [],
+      notInSight: [],
+      jackInSight: false,
+      gameover: false
+    };
+
+    this.detectives.forEach(detective => {
+      switch (this.lookingAt(detective)) {
+        case DIRECTIONS.UP:
+          for (let y = 2; y >= 0; y--) {
+            const tile = this.grid[y][detective.x];
+            const wall = (tile.wall - 1) % 4 + 1;
+
+            if (wall === DIRECTIONS.DOWN) break;
+
+            result.inSight.push(tile);
+            if (tile.character === this.jack) result.jackInSight = true;
+
+            if (wall === DIRECTIONS.UP) break;
+          }
+          break;
+
+        case DIRECTIONS.RIGHT:
+          for (let x = 0; x < 3; x++) {
+            const tile = this.grid[detective.y][x];
+            const wall = (tile.wall - 1) % 4 + 1;
+
+            if (wall === DIRECTIONS.LEFT) break;
+
+            result.inSight.push(tile);
+            if (tile.character === this.jack) result.jackInSight = true;
+
+            if (wall === DIRECTIONS.RIGHT) break;
+          }
+          break;
+
+        case DIRECTIONS.DOWN:
+          for (let y = 0; y < 3; y++) {
+            const tile = this.grid[y][detective.x];
+            const wall = (tile.wall - 1) % 4 + 1;
+
+            if (wall === DIRECTIONS.UP) break;
+
+            result.inSight.push(tile);
+            if (tile.character === this.jack) result.jackInSight = true;
+
+            if (wall === DIRECTIONS.DOWN) break;
+          }
+          break;
+
+        case DIRECTIONS.LEFT:
+          for (let x = 2; x >= 0; x--) {
+            const tile = this.grid[detective.y][x];
+            const wall = (tile.wall - 1) % 4 + 1;
+
+            if (wall === DIRECTIONS.RIGHT) break;
+
+            result.inSight.push(tile);
+            if (tile.character === this.jack) result.jackInSight = true;
+
+            if (wall === DIRECTIONS.LEFT) break;
+          }
+          break;
+        default:
+          break;
+      }
+    });
+
+    this.forEachTile((tile, x, y) => {
+      if (result.inSight.indexOf(tile) === -1) {
+        result.notInSight.push(tile);
+      }
+    });
+
+    if (result.notInSight.length) {
+      console.log("highlight");
+      // this.highlightVisibleTiles(result.notInSight.map(t => t.character));
+    }
+
+    let visibleSuspects = result.inSight.filter(t => t.suspect);
+    let notVisibleSuspects = result.notInSight.filter(t => t.suspect);
+
+    if (result.jackInSight) {
+      setTimeout(() => {
+        notVisibleSuspects.forEach(t => {
+          t.suspect = false;
+        });
+      }, 1000);
+
+      if (visibleSuspects.length === 1 && this.jackTotalTime < 6) {
+        result.gameover = true;
+
+        setTimeout(() => {
+          alert(`GOTCHA! ${visibleSuspects[0].character} is Jack!`);
+        }, 2000);
+      }
+    } else {
+      setTimeout(() => {
+        visibleSuspects.forEach(t => {
+          t.suspect = false;
+        });
+
+        this.jackTime += 1;
+
+        if (this.jackTotalTime >= 6) {
+          alert("JACK WON, he was", this.jack);
+          result.gameover = true;
+        }
+      }, 1000);
+
+      if (notVisibleSuspects.length === 1 && this.jackTotalTime < 6) {
+        result.gameover = true;
+
+        setTimeout(() => {
+          alert(`GOTCHA! ${notVisibleSuspects[0].character} is Jack!`);
+        }, 2000);
+      }
+    }
+
+    return result;
+  }
+
+  forEachTile(fn) {
+    for (let y = 0; y < 3; y++) {
+      for (let x = 0; x < 3; x++) {
+        fn(this.grid[y][x], x, y);
+      }
+    }
+  }
+
+  facing({ x, y }) {
+    if (x === -1) return DIRECTIONS.UP;
+    if (x === 3) return DIRECTIONS.DOWN;
+    if (y === -1) return DIRECTIONS.RIGHT;
+    if (y === 3) return DIRECTIONS.LEFT;
+  }
+
+  lookingAt({ x, y }) {
+    if (x === -1) return DIRECTIONS.RIGHT;
+    if (x === 3) return DIRECTIONS.LEFT;
+    if (y === -1) return DIRECTIONS.DOWN;
+    if (y === 3) return DIRECTIONS.UP;
+  }
 }
 
 module.exports = Game;

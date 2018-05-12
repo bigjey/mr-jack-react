@@ -1,14 +1,8 @@
 import { observable, computed, action } from "mobx";
 import { TweenLite, TweenMax } from "gsap";
-import io from 'socket.io-client';
+import io from "socket.io-client";
 
-import {
-  PHASE,
-  CHARACTERS,
-  DIRECTIONS,
-  ACTIONS,
-  TURN
-} from '../constants';
+import { PHASE, CHARACTERS, DIRECTIONS, ACTIONS, TURN } from "../constants";
 
 class GameStore {
   @observable grid = [];
@@ -49,83 +43,91 @@ class GameStore {
   }
 
   ensurePlayerId() {
-    let playerId = localStorage.getItem('playerId');
+    let playerId = localStorage.getItem("playerId");
     if (!playerId) {
       playerId = Math.floor(Math.random() * 1000000);
-      localStorage.setItem('playerId', playerId);
+      localStorage.setItem("playerId", playerId);
     }
     this.playerId = playerId;
   }
 
   createSocket() {
-    this.socket = io.connect('http://localhost:1234');
+    this.socket = io.connect("http://localhost:1234");
 
-    this.socket.emit('playerId', this.playerId);
+    this.socket.emit("playerId", this.playerId);
 
-    this.socket.on('gameList', (games) => {
+    this.socket.on("gameList", games => {
       this.games.replace(games);
-    })
+    });
 
-    this.socket.on('joinedGame', (gameId) => {
+    this.socket.on("joinedGame", gameId => {
       this.gameId = gameId;
-    })
+    });
 
-    this.socket.on('startReadyCountdown', () => {
+    this.socket.on("startReadyCountdown", () => {
       this.readyCountdown = true;
-    })
+    });
 
-    this.socket.on('cancelReadyCountdown', () => {
+    this.socket.on("cancelReadyCountdown", () => {
       this.readyCountdown = false;
-    })
+    });
 
-    this.socket.on('gameData', ({
-      phase,
-      grid,
-      suspects,
-      detectives,
-      actionTokens,
-      selection,
-      ready,
-      waiting,
-      players
-    }) => {
+    this.socket.on("123", () => {
+      console.log("123");
+    });
 
-      this.phase = phase;
-      this.grid.replace(grid);
-      this.suspects.replace(suspects);
-      this.detectives.replace(detectives);
-      this.actionTokens.replace(actionTokens);
-      this.selection = {...selection};
-      this.ready.replace(ready);
-      this.waiting.replace(waiting);
-      this.players.replace(players);
-    })
+    this.socket.on(
+      "gameData",
+      ({
+        phase,
+        grid,
+        suspects,
+        detectives,
+        actionTokens,
+        selection,
+        ready,
+        waiting,
+        players
+      }) => {
+        console.log(grid);
+
+        this.phase = phase;
+        this.grid.replace(grid);
+        this.suspects.replace(suspects);
+        this.detectives.replace(detectives);
+        this.actionTokens.replace(actionTokens);
+        this.selection = { ...selection };
+        this.ready.replace(ready);
+        this.waiting.replace(waiting);
+        this.players.replace(players);
+      }
+    );
   }
 
   @action.bound
   createGame() {
-    this.socket.emit('createGame');
+    this.socket.emit("createGame");
   }
 
   @action.bound
   joinGame(gameId) {
-    this.socket.emit('joinGame', gameId);
+    this.socket.emit("joinGame", gameId);
   }
 
   @action.bound
   leaveGame() {
-    this.socket.emit('leaveGame', this.gameId);
+    this.socket.emit("leaveGame", this.gameId);
     this.gameId = null;
   }
 
   @action.bound
   selectCharacter(character) {
-    this.socket.emit('selectCharacter', {character, gameId: this.gameId})
+    this.socket.emit("selectCharacter", { character, gameId: this.gameId });
   }
 
   @action.bound
   toggleReady() {
-    this.socket.emit('toggleReady', this.gameId);
+    this.socket.emit("toggleReady", this.gameId);
   }
 
   @computed
@@ -152,7 +154,7 @@ class GameStore {
   get jackCardsTime() {
     return this.jackCards.reduce((total, char) => {
       return total + CHARACTERS[char].time;
-    }, 0)
+    }, 0);
   }
 
   @action.bound
@@ -243,7 +245,7 @@ class GameStore {
 
       case "Swap":
         if (this.selectedTile) {
-          return "Click on selected tile to deselect. <br/>Click on another tile to swap them"
+          return "Click on selected tile to deselect. <br/>Click on another tile to swap them";
         } else {
           return "Select tile";
         }
@@ -297,8 +299,10 @@ class GameStore {
   }
 
   @action.bound
-  rotateTile(x, y) {
-    this.grid[y][x].wall++;
+  rotateTile(x, y, rotations) {
+    this.emit(ACTIONS.Rotate, { x, y, rotations }, true);
+
+    // this.grid[y][x].wall++;
   }
 
   @action.bound
@@ -308,12 +312,12 @@ class GameStore {
       let t = params[0];
       if (t.character === ch1) t1 = params;
       if (t.character === ch2) t2 = params;
-    })
+    });
 
     let [tile1, x1, y1] = t1;
     let [tile2, x2, y2] = t2;
-    this.grid[y1][x1] = {...tile2}
-    this.grid[y2][x2] = {...tile1}
+    this.grid[y1][x1] = { ...tile2 };
+    this.grid[y2][x2] = { ...tile1 };
 
     this.endAction();
   }
@@ -381,143 +385,6 @@ class GameStore {
     }
   }
 
-  @action.bound
-  inspect() {
-    let result = {
-      inSight: [],
-      notInSight: [],
-      jackInSight: false,
-      gameover: false
-    };
-
-    this.detectives.forEach(detective => {
-      switch (this.lookingAt(detective)) {
-        case DIRECTIONS.UP:
-          for (let y = 2; y >= 0; y--) {
-            const tile = this.grid[y][detective.x];
-            const wall = (tile.wall - 1) % 4 + 1;
-
-            if (wall === DIRECTIONS.DOWN) break;
-
-            result.inSight.push(tile);
-            if (tile.character === this.jack) result.jackInSight = true;
-
-            if (wall === DIRECTIONS.UP) break;
-          }
-          break;
-
-        case DIRECTIONS.RIGHT:
-          for (let x = 0; x < 3; x++) {
-            const tile = this.grid[detective.y][x];
-            const wall = (tile.wall - 1) % 4 + 1;
-
-            if (wall === DIRECTIONS.LEFT) break;
-
-            result.inSight.push(tile);
-            if (tile.character === this.jack) result.jackInSight = true;
-
-            if (wall === DIRECTIONS.RIGHT) break;
-          }
-          break;
-
-        case DIRECTIONS.DOWN:
-          for (let y = 0; y < 3; y++) {
-            const tile = this.grid[y][detective.x];
-            const wall = (tile.wall - 1) % 4 + 1;
-
-            if (wall === DIRECTIONS.UP) break;
-
-            result.inSight.push(tile);
-            if (tile.character === this.jack) result.jackInSight = true;
-
-            if (wall === DIRECTIONS.DOWN) break;
-          }
-          break;
-
-        case DIRECTIONS.LEFT:
-          for (let x = 2; x >= 0; x--) {
-            const tile = this.grid[detective.y][x];
-            const wall = (tile.wall - 1) % 4 + 1;
-
-            if (wall === DIRECTIONS.RIGHT) break;
-
-            result.inSight.push(tile);
-            if (tile.character === this.jack) result.jackInSight = true;
-
-            if (wall === DIRECTIONS.LEFT) break;
-          }
-          break;
-        default:
-          break;
-      }
-    });
-
-    this.forEachTile((tile, x, y) => {
-      if (result.inSight.indexOf(tile) === -1) {
-        result.notInSight.push(tile);
-      }
-    });
-
-    if (result.notInSight.length) {
-      this.highlightVisibleTiles(result.notInSight.map(t => t.character));
-    }
-
-    let visibleSuspects = result.inSight.filter(t => t.suspect);
-    let notVisibleSuspects = result.notInSight.filter(t => t.suspect);
-
-    if (result.jackInSight) {
-      setTimeout(
-        () => {
-          notVisibleSuspects.forEach(t => {
-            t.suspect = false;
-          });
-        },
-        1000
-      );
-
-      if (visibleSuspects.length === 1 && this.jackTotalTime < 6) {
-        result.gameover = true;
-
-        setTimeout(
-          () => {
-            alert(`GOTCHA! ${visibleSuspects[0].character} is Jack!`);
-            
-          },
-          2000
-        );
-      }
-    } else {
-      setTimeout(
-        () => {
-          visibleSuspects.forEach(t => {
-            t.suspect = false;
-          })
-
-          this.jackTime += 1;
-
-          if (this.jackTotalTime >= 6) {
-            alert('JACK WON, he was', this.jack);
-            result.gameover = true;
-          }
-        },
-        1000
-      );
-
-      if (notVisibleSuspects.length === 1 && this.jackTotalTime < 6) {
-        result.gameover = true;
-
-        setTimeout(
-          () => {
-            alert(`GOTCHA! ${notVisibleSuspects[0].character} is Jack!`);
-          },
-          2000
-        );
-      }
-    }
-
-    return result;
-  }
-
   highlightVisibleTiles(characters) {
     this.animating = true;
 
@@ -557,41 +424,36 @@ class GameStore {
       }
 
       this.endAction();
-    }
+    };
 
-    TweenMax.to(
-      card,
-      0.5,
-      {
-        bottom: "50%",
-        right: "50%",
-        x: "50%",
-        y: "50%",
-        rotation: 0,
-        scale: 2,
-        onComplete: () => {
-          TweenMax.to(flipper, 0.15, {
-            rotationY: "360deg",
-            onComplete: () => {
-              setTimeout(() => {
-                TweenMax.to(card, 0.15, {
-                  right: "120%",
-                  onComplete
-                });
-              }, 1000);
-            }
-          });
-        }
+    TweenMax.to(card, 0.5, {
+      bottom: "50%",
+      right: "50%",
+      x: "50%",
+      y: "50%",
+      rotation: 0,
+      scale: 2,
+      onComplete: () => {
+        TweenMax.to(flipper, 0.15, {
+          rotationY: "360deg",
+          onComplete: () => {
+            setTimeout(() => {
+              TweenMax.to(card, 0.15, {
+                right: "120%",
+                onComplete
+              });
+            }, 1000);
+          }
+        });
       }
-    );
-
+    });
   }
 
   @action.bound
   endAction() {
     let gameover = false;
 
-    if ([4,0].indexOf(this.round % 8) !== -1) {
+    if ([4, 0].indexOf(this.round % 8) !== -1) {
       gameover = this.inspect().gameover;
 
       this.tiles.forEach(t => (t.rotated = false));
@@ -621,15 +483,26 @@ class GameStore {
       });
     }
 
-    if ([1,4,6,7].indexOf(this.round % 8) !== -1) {
+    if ([1, 4, 6, 7].indexOf(this.round % 8) !== -1) {
       this.turn = TURN.DETECTIVE;
     } else {
       this.turn = TURN.JACK;
     }
 
     if (this.jackTotalTime === 6) {
-      alert('JACK WON, he was', this.jack);
+      alert("JACK WON, he was", this.jack);
     }
+  }
+
+  emit(type, params, log = false) {
+    const payload = {
+      gameId: this.gameId,
+      ...params
+    };
+
+    this.socket.emit(type, payload);
+
+    log && console.log(type, payload);
   }
 }
 
