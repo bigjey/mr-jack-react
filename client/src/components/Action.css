@@ -23,7 +23,7 @@
   box-shadow: 0 0 10px gold;
 }
 
-.actionSelection .Action:hover {
+.actionSelection .Action.hoverable:hover {
   transform: translateX(5px);
 }
 

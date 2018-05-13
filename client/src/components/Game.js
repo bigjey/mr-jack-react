@@ -22,7 +22,8 @@ export default class Game extends React.Component {
         actionTokens,
         currentAction,
         turn,
-        hint
+        hint,
+        isMyTurn
       }
     } = this.props;
 
@@ -30,14 +31,28 @@ export default class Game extends React.Component {
       actionSelection: !currentAction
     });
 
+    console.log(turn, turn === TURN.JACK)
+
     return (
       <div className={gameClasses}>
 
-        {turn === TURN.JACK ? (
-          <div className="turn jack">Jack's turn</div>
+        {isMyTurn ? (
+          <div className="turn detective">Your turn</div>
         ) : (
-          <div className="turn detective">Detectives' turn</div>
+          <div className="turn jack">
+            {turn === TURN.JACK ? "Jack's" : "Detective's"} turn
+          </div>
         )}
+
+        <div className="Game--role">
+          {(turn === TURN.JACK && isMyTurn) || (turn === TURN.DETECTIVE && !isMyTurn) ? 
+            (
+            `You're playing Jack ${123}`
+            ) : (
+            `You're playing Detetive`
+            )
+          }
+        </div>
 
         {hint && (
           <div className="hint" dangerouslySetInnerHTML={{__html: hint}} />

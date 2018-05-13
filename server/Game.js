@@ -11,6 +11,7 @@ import {
 class Game {
   constructor(socket) {
     this.socket = socket;
+    this.io = socket.server;
     this.id = Math.floor(Math.random() * 1000000);
     this.players = [];
     this.pending = [];
@@ -27,6 +28,9 @@ class Game {
     this.turn = TURN.DETECTIVE;
 
     this.jack = null;
+
+    this.jackPlayer = null;
+    this.detectivePlayer = null;
 
     this.round = 0;
 
@@ -61,6 +65,7 @@ class Game {
     this.resetDetectives();
     this.resetSuspects();
     this.randomizeActions();
+    this.assignPlayerRoles();
 
     this.round = 1;
 
@@ -72,8 +77,7 @@ class Game {
 
     // console.log('updating', data);
 
-    this.socket.emit("gameData", data);
-    this.socket.to(this.id).emit("gameData", data);
+    this.io.in(this.id).emit("gameData", data);
   }
 
   normalize() {
@@ -86,13 +90,53 @@ class Game {
       ready: this.ready,
       grid: this.grid,
       detectives: this.detectives,
-      suspects: this.suspects,
-      actionTokens: this.actionTokens
+      // suspects: this.suspects,
+      actionTokens: this.actionTokens,
+      activePlayer: this.activePlayer,
+      turn: this.turn
     };
   }
 
   setJack() {
     this.jack = Object.keys(CHARACTERS)[Math.floor(Math.random() * 9)];
+    console.log(this.jack);
+  }
+
+  assignPlayerRoles() {
+    let players = Object.keys(this.characterSelection);
+    let jack = [];
+    let detective = [];
+    let random = [];
+
+    for (let pId in this.characterSelection) {
+      let role = this.characterSelection[pId];
+
+      if (role === TURN.JACK) {
+        jack.push(pId);
+      } else if (role === TURN.DETECTIVE) {
+        detective.push(pId);
+      } else {
+        random.push(pId);
+      }
+    }
+
+    if (jack.length === 2 || detective.length === 2 || random.length === 2) {
+      players.sort(_ => Math.random() - 0.5);
+
+      this.jackPlayer = players.pop();
+      this.detectivePlayer = players.pop()
+    } else if (random.length) {
+      if (jack.length) {
+        this.jackPlayer = jack.pop();
+        this.detectivePlayer = random.pop()
+      } else {
+        this.jackPlayer = random.pop();
+        this.detectivePlayer = detective.pop()
+      }
+    } else {
+      this.jackPlayer = jack.pop();
+      this.detectivePlayer = detective.pop()
+    }
   }
 
   setupGrid() {
@@ -178,6 +222,10 @@ class Game {
       }));
   }
 
+  get activePlayer() {
+    return this.turn === TURN.JACK ? this.jackPlayer : this.detectivePlayer;
+  }
+
   get jackTotalTime() {
     return this.jackTime + this.jackCardsTime;
   }
@@ -209,18 +257,97 @@ class Game {
   rotateTile(x, y, rotations) {
     this.grid[y][x].wall += rotations;
     this.endAction();
-
-    console.log("rotate", x, y, rotations);
-
-    this.updateGameInfo();
   }
 
+  showAlibi() {
+    const char = this.suspects.pop();
+
+    this.io.in(this.id).emit("showAlibi", char);
+
+    setTimeout(function(){
+      const tile = this.tiles.find(t => t.character === char);
+      if (tile && tile.suspect) {
+        tile.suspect = false;
+      }
+
+      if (this.isJackTurn) {
+        this.jackCards.push(char);
+      }
+
+      this.endAction();
+    }.bind(this), 3000);
+  }
+
+  moveDetective(action, name, steps){
+    console.log(action, name, steps);
+    const detective = this.detectives.find(d => d.name === name);
+
+    if (detective) {
+      let { x, y } = this.move(detective, steps);
+
+      detective.x = x;
+      detective.y = y;
+
+      this.endAction();
+    }
+  }
+
+  swapTiles(ch1, ch2) {
+    let t1, t2;
+
+    this.forEachTile((...params) => {
+      let t = params[0];
+      if (t.character === ch1) t1 = params;
+      if (t.character === ch2) t2 = params;
+    });
+
+    let [tile1, x1, y1] = t1;
+    let [tile2, x2, y2] = t2;
+    this.grid[y1][x1] = Object.assign({}, tile2);
+    this.grid[y2][x2] = Object.assign({}, tile1);
+
+    this.endAction();
+  }
+
+  move({ x, y }, steps = 1) {
+    let dx = x;
+    let dy = y;
+
+    switch (this.facing({ x, y })) {
+      case DIRECTIONS.UP:
+        dy--;
+        if (dy === -1) dx++;
+        break;
+      case DIRECTIONS.DOWN:
+        dy++;
+        if (dy === 3) dx--;
+        break;
+      case DIRECTIONS.LEFT:
+        dx--;
+        if (dx === -1) dy--;
+        break;
+      case DIRECTIONS.RIGHT:
+        dx++;
+        if (dx === 3) dy++;
+        break;
+      default:
+        break;
+    }
+
+    if (steps - 1 > 0) {
+      return this.move({ x: dx, y: dy }, steps - 1);
+    } else {
+      return { x: dx, y: dy };
+    }
+  }
+
+
   endAction() {
-    return;
-    let gameover = false;
+    console.log('end action', this.round);
+    let results = null;
 
     if ([4, 0].indexOf(this.round % 8) !== -1) {
-      gameover = this.inspect().gameover;
+      results = this.inspect();
 
       this.tiles.forEach(t => (t.rotated = false));
     }
@@ -229,9 +356,16 @@ class Game {
 
     this.detectives.forEach(d => (d.selected = false));
 
-    if (gameover) return;
+    console.log(results);
+
+    if (results && results.gameover && results.jack) {
+      this.io.in(this.id).emit('gameover', results.jack)
+      console.log('gameover', results.jack)
+      return;
+    };
 
     this.round++;
+    console.log('round', this.round);
 
     this.actionTokens.forEach(a => {
       if (a.selected) {
@@ -258,6 +392,8 @@ class Game {
     if (this.jackTotalTime === 6) {
       console.log("JACK WON, he was", this.jack);
     }
+
+    this.updateGameInfo();
   }
 
   inspect() {
@@ -337,8 +473,7 @@ class Game {
     });
 
     if (result.notInSight.length) {
-      console.log("highlight");
-      // this.highlightVisibleTiles(result.notInSight.map(t => t.character));
+      this.io.in(this.id).emit('highlight', result.notInSight.map(t => t.character));
     }
 
     let visibleSuspects = result.inSight.filter(t => t.suspect);
@@ -349,13 +484,17 @@ class Game {
         notVisibleSuspects.forEach(t => {
           t.suspect = false;
         });
+        this.updateGameInfo();
       }, 1000);
 
       if (visibleSuspects.length === 1 && this.jackTotalTime < 6) {
         result.gameover = true;
+        let jack = visibleSuspects[0].character;
+        result.jack = jack;
 
         setTimeout(() => {
-          alert(`GOTCHA! ${visibleSuspects[0].character} is Jack!`);
+          console.log(`GOTCHA! ${jack} is Jack!`);
+          
         }, 2000);
       }
     } else {
@@ -367,16 +506,20 @@ class Game {
         this.jackTime += 1;
 
         if (this.jackTotalTime >= 6) {
-          alert("JACK WON, he was", this.jack);
+          console.log("JACK WON, he was", this.jack);
           result.gameover = true;
         }
+
+        this.updateGameInfo();
       }, 1000);
 
       if (notVisibleSuspects.length === 1 && this.jackTotalTime < 6) {
         result.gameover = true;
+        let jack = notVisibleSuspects[0].character;
+        result.jack = jack;
 
         setTimeout(() => {
-          alert(`GOTCHA! ${notVisibleSuspects[0].character} is Jack!`);
+          console.log(`GOTCHA! ${jack} is Jack!`);
         }, 2000);
       }
     }

@@ -39,8 +39,8 @@ class GameManager {
     if (game) {
       game.players.push(socket);
 
-      socket.emit("joinedGame", gameId);
       socket.join(gameId);
+      socket.emit("joinedGame", gameId);
 
       if (game.players.length === 2) {
         game.setPhase(PHASE.CHARACTER_SELECTION);
@@ -85,6 +85,8 @@ class GameManager {
         this.updateGameInfo(game.id);
         this.updateGameList();
       }
+
+      socket.join(game.id);
     }
   }
 
@@ -152,6 +154,7 @@ class GameManager {
   }
 
   updateGameList() {
+    console.log(this.games.map(g => g.players.map(p => p.playerId)));
     // console.log('updating game list');
     this.io.emit("gameList", this.games.map(this.normalizeGame));
   }
@@ -170,6 +173,30 @@ class GameManager {
 
     if (game) {
       game.rotateTile(x, y, rotations);
+    }
+  }
+
+  showAlibi(socket, gameId) {
+    const game = this.gameById[gameId];
+
+    if (game) {
+      game.showAlibi();
+    }
+  }
+
+  moveDetetive(socket, gameId, action, name, steps){
+    const game = this.gameById[gameId];
+
+    if (game) {
+      game.moveDetective(action, name, steps);
+    }
+  }
+
+  swapTiles(socket, gameId, ch1, ch2){
+    const game = this.gameById[gameId];
+
+    if (game) {
+      game.swapTiles(ch1, ch2);
     }
   }
 

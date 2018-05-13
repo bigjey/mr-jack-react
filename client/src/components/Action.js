@@ -16,14 +16,15 @@ export default class Action extends React.Component {
       flipped,
       used,
       selected,
-      game: { currentAction, selectAction }
+      game: { currentAction, selectAction, isMyTurn }
     } = this.props;
 
     const [action1, action2] = actions.split("|");
 
     const actionClasses = classnames("Action", {
       used,
-      active: selected
+      active: selected,
+      hoverable: isMyTurn
     });
 
     const flipperClasses = classnames("Action--flipper", {
@@ -33,7 +34,7 @@ export default class Action extends React.Component {
     return (
       <div
         className={actionClasses}
-        onClick={used || currentAction ? null : () => {
+        onClick={!isMyTurn || used || currentAction ? null : () => {
           selectAction(actions);
         }}
       >

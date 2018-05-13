@@ -50,6 +50,18 @@ io.on("connection", function(socket) {
   socket.on(ACTIONS.Rotate, ({ gameId, x, y, rotations }) => {
     gameManager.rotateTile(socket, gameId, x, y, rotations);
   });
+
+  socket.on(ACTIONS.Alibi, ({ gameId }) => {
+    gameManager.showAlibi(socket, gameId);
+  });
+
+  socket.on(ACTIONS.Swap, ({ gameId, ch1, ch2 }) => {
+    gameManager.swapTiles(socket, gameId, ch1, ch2);
+  });
+
+  socket.on('move', ({gameId, action, name, steps}) => {
+    gameManager.moveDetetive(socket, gameId, action, name, steps);
+  });
 });
 
 server.listen(1234);

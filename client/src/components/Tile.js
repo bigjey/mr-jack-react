@@ -117,7 +117,7 @@ export default class Tile extends React.Component {
                 e.preventDefault();
                 e.stopPropagation();
 
-                this.setState({ rotations: this.state.rotations++ });
+                this.setState({ rotations: this.state.rotations + 1 });
                 // rotateTile(x, y);
               }}
             >

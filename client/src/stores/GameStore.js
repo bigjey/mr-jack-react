@@ -13,6 +13,7 @@ class GameStore {
   @observable players = [];
   @observable waiting = [];
   @observable selection = {};
+  @observable activePlayer = null;
 
   @observable phase = PHASE.LOBBY;
 
@@ -72,34 +73,40 @@ class GameStore {
       this.readyCountdown = false;
     });
 
-    this.socket.on("123", () => {
-      console.log("123");
-    });
+    this.socket.on("showAlibi", this.animateAlibi);
+
+    this.socket.on("highlight", this.highlightVisibleTiles);
+
+    this.socket.on("gameover", this.gameover);
 
     this.socket.on(
       "gameData",
       ({
         phase,
         grid,
-        suspects,
+        // suspects,
         detectives,
         actionTokens,
         selection,
         ready,
         waiting,
-        players
+        players,
+        activePlayer,
+        turn
       }) => {
         console.log(grid);
 
         this.phase = phase;
         this.grid.replace(grid);
-        this.suspects.replace(suspects);
+        // this.suspects.replace(suspects);
         this.detectives.replace(detectives);
         this.actionTokens.replace(actionTokens);
         this.selection = { ...selection };
         this.ready.replace(ready);
         this.waiting.replace(waiting);
         this.players.replace(players);
+        this.activePlayer = activePlayer;
+        this.turn = turn;
       }
     );
   }
@@ -128,6 +135,12 @@ class GameStore {
   @action.bound
   toggleReady() {
     this.socket.emit("toggleReady", this.gameId);
+  }
+
+  @computed
+  get isMyTurn() {
+    console.log(this.playerId, this.activePlayer);
+    return this.playerId === this.activePlayer;
   }
 
   @computed
@@ -203,7 +216,10 @@ class GameStore {
   @action.bound
   selectAction(newActions = null) {
     this.actionTokens.forEach(a => {
+      console.log(a.actions, newActions);
+
       a.selected = a.actions === newActions;
+
       if (a.selected) {
         switch (this.currentAction) {
           case ACTIONS.Alibi:
@@ -300,26 +316,13 @@ class GameStore {
 
   @action.bound
   rotateTile(x, y, rotations) {
+    this.grid[y][x].wall += rotations;
     this.emit(ACTIONS.Rotate, { x, y, rotations }, true);
-
-    // this.grid[y][x].wall++;
   }
 
   @action.bound
   swapTiles(ch1, ch2) {
-    let t1, t2;
-    this.forEachTile((...params) => {
-      let t = params[0];
-      if (t.character === ch1) t1 = params;
-      if (t.character === ch2) t2 = params;
-    });
-
-    let [tile1, x1, y1] = t1;
-    let [tile2, x2, y2] = t2;
-    this.grid[y1][x1] = { ...tile2 };
-    this.grid[y2][x2] = { ...tile1 };
-
-    this.endAction();
+    this.emit(ACTIONS.Swap, {ch1, ch2}, true);
   }
 
   @action.bound
@@ -329,14 +332,7 @@ class GameStore {
 
   @action.bound
   moveDetective(name, steps = 1) {
-    let detective = this.detectives.find(d => d.name === name);
-
-    let { x, y } = this.move(detective, steps);
-
-    detective.x = x;
-    detective.y = y;
-
-    this.endAction();
+    this.emit('move', {action: ACTIONS[this.currentAction], name, steps}, true);
   }
 
   facing({ x, y }) {
@@ -351,38 +347,6 @@ class GameStore {
     if (x === 3) return DIRECTIONS.LEFT;
     if (y === -1) return DIRECTIONS.DOWN;
     if (y === 3) return DIRECTIONS.UP;
-  }
-
-  move({ x, y }, steps = 1) {
-    let dx = x;
-    let dy = y;
-
-    switch (this.facing({ x, y })) {
-      case DIRECTIONS.UP:
-        dy--;
-        if (dy === -1) dx++;
-        break;
-      case DIRECTIONS.DOWN:
-        dy++;
-        if (dy === 3) dx--;
-        break;
-      case DIRECTIONS.LEFT:
-        dx--;
-        if (dx === -1) dy--;
-        break;
-      case DIRECTIONS.RIGHT:
-        dx++;
-        if (dx === 3) dy++;
-        break;
-      default:
-        break;
-    }
-
-    if (steps - 1 > 0) {
-      return this.move({ x: dx, y: dy }, steps - 1);
-    } else {
-      return { x: dx, y: dy };
-    }
   }
 
   highlightVisibleTiles(characters) {
@@ -404,26 +368,18 @@ class GameStore {
     }, 1900);
   }
 
-  @action.bound
   showAlibi() {
-    let char = this.suspects[this.suspects.length - 1];
+    this.emit(ACTIONS.Alibi);
+  }
 
+  @action.bound
+  animateAlibi(char) {
+    console.log('animate alibi', char);
     const card = `#card-${char}`;
     const flipper = `${card} .Card--flipper`;
 
     const onComplete = () => {
-      this.suspects = this.suspects.filter(s => s !== char);
-
-      const tile = this.tiles.find(t => t.character === char);
-      if (tile && tile.suspect) {
-        tile.suspect = false;
-      }
-
-      if (this.isJackTurn) {
-        this.jackCards.push(char);
-      }
-
-      this.endAction();
+      console.log('complete');
     };
 
     TweenMax.to(card, 0.5, {
@@ -450,48 +406,8 @@ class GameStore {
   }
 
   @action.bound
-  endAction() {
-    let gameover = false;
-
-    if ([4, 0].indexOf(this.round % 8) !== -1) {
-      gameover = this.inspect().gameover;
-
-      this.tiles.forEach(t => (t.rotated = false));
-    }
-
-    this.tiles.forEach(t => (t.selected = false));
-
-    this.detectives.forEach(d => (d.selected = false));
-
-    if (gameover) return;
-
-    this.round++;
-
-    this.actionTokens.forEach(a => {
-      if (a.selected) {
-        a.selected = false;
-        a.used = true;
-      }
-    });
-
-    if (this.round % 8 === 1) {
-      this.randomizeActions();
-    } else if (this.round % 8 === 5) {
-      this.actionTokens.forEach(t => {
-        t.flipped = !t.flipped;
-        t.used = false;
-      });
-    }
-
-    if ([1, 4, 6, 7].indexOf(this.round % 8) !== -1) {
-      this.turn = TURN.DETECTIVE;
-    } else {
-      this.turn = TURN.JACK;
-    }
-
-    if (this.jackTotalTime === 6) {
-      alert("JACK WON, he was", this.jack);
-    }
+  gameover(jack) {
+    alert(jack)
   }
 
   emit(type, params, log = false) {
